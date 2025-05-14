@@ -1,6 +1,7 @@
 class ChallengeA1Screen extends Phaser.Scene {
     constructor() {
         super('ChallengeA1Screen');
+        this.scalingManager = null;
     }
 
     preload() {
@@ -9,6 +10,9 @@ class ChallengeA1Screen extends Phaser.Scene {
     }
 
     create() {
+        // Initialize the scaling manager
+        this.scalingManager = new ScalingManager(this);
+        
         // Create a dark background with grid similar to title screen
         this.createBackground();
         
@@ -17,28 +21,49 @@ class ChallengeA1Screen extends Phaser.Scene {
         
         // Start button
         this.createStartButton();
+        
+        // Listen for resize events
+        this.scale.on('resize', this.refreshUI, this);
+    }
+    
+    refreshUI() {
+        // Update scaling manager
+        if (this.scalingManager) {
+            this.scalingManager.updateScaleFactor();
+        }
+        
+        // Clear the existing display
+        this.children.removeAll(true);
+        
+        // Recreate the UI elements
+        this.createBackground();
+        this.createChallengeTitle();
+        this.createStartButton();
     }
     
     createBackground() {
         // Create a dark background
-        const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x000000);
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        const bg = this.add.rectangle(0, 0, width, height, 0x000000);
         bg.setOrigin(0, 0);
         
         // Create a grid pattern overlay - using blue for a different look than title
-        const gridSize = 30;
+        const gridSize = Math.min(width, height) / 20; // Responsive grid size
         const graphics = this.add.graphics();
         graphics.lineStyle(1, 0x001133, 0.3);
         
         // Draw vertical lines
-        for(let x = 0; x < this.cameras.main.width; x += gridSize) {
+        for(let x = 0; x < width; x += gridSize) {
             graphics.moveTo(x, 0);
-            graphics.lineTo(x, this.cameras.main.height);
+            graphics.lineTo(x, height);
         }
         
         // Draw horizontal lines
-        for(let y = 0; y < this.cameras.main.height; y += gridSize) {
+        for(let y = 0; y < height; y += gridSize) {
             graphics.moveTo(0, y);
-            graphics.lineTo(this.cameras.main.width, y);
+            graphics.lineTo(width, y);
         }
         
         graphics.strokePath();
@@ -53,7 +78,7 @@ class ChallengeA1Screen extends Phaser.Scene {
             0.8, 0.8, 0, 0
         );
         
-        vignette.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+        vignette.fillRect(0, 0, width, height);
     }
     
     createChallengeTitle() {
@@ -63,17 +88,17 @@ class ChallengeA1Screen extends Phaser.Scene {
         // Main challenge title with blue glow effect
         const title = this.add.text(centerX, centerY, 'CHALLENGE A1', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '70px',
+            fontSize: `${this.scalingManager.scale(70)}px`,
             fontStyle: 'bold',
             color: '#ffffff',
             align: 'center',
             stroke: '#0066ff', // Blue stroke instead of red
-            strokeThickness: 2,
+            strokeThickness: this.scalingManager.scale(2),
             shadow: {
-                offsetX: 3,
-                offsetY: 3,
+                offsetX: this.scalingManager.scale(3),
+                offsetY: this.scalingManager.scale(3),
                 color: '#0066ff', // Blue shadow instead of red
-                blur: 10,
+                blur: this.scalingManager.scale(10),
                 stroke: true,
                 fill: true
             }
@@ -86,7 +111,7 @@ class ChallengeA1Screen extends Phaser.Scene {
         this.tweens.add({
             targets: title,
             alpha: 1,
-            y: centerY - 20, // Slight upward movement during fade-in
+            y: centerY - this.scalingManager.scale(20), // Slight upward movement during fade-in
             duration: 1500,
             ease: 'Power2',
             onComplete: () => {
@@ -105,9 +130,9 @@ class ChallengeA1Screen extends Phaser.Scene {
         
         // Description with typewriter effect
         const descriptionText = 'Session Hijacker';
-        const description = this.add.text(centerX, centerY + 80, '', {
+        const description = this.add.text(centerX, centerY + this.scalingManager.scale(80), '', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             color: '#3399ff',
             align: 'center',
             fontStyle: 'bold'
@@ -138,20 +163,24 @@ class ChallengeA1Screen extends Phaser.Scene {
             });
         });
         
-        // Add an icon or symbol for the challenge
+        // Add back button in the top left
+        this.createBackButton();
+        
+        // Add an icon or symbol for the challenge - scaled appropriately
+        const iconSize = this.scalingManager.scale(40);
         const securityIcon = this.add.graphics();
         securityIcon.fillStyle(0x0066ff, 1);
-        securityIcon.fillCircle(centerX, centerY - 120, 40);
+        securityIcon.fillCircle(centerX, centerY - this.scalingManager.scale(120), iconSize);
         securityIcon.fillStyle(0x000000, 1);
-        securityIcon.fillCircle(centerX, centerY - 120, 30);
-        securityIcon.lineStyle(3, 0x0066ff, 1);
-        securityIcon.strokeCircle(centerX, centerY - 120, 35);
+        securityIcon.fillCircle(centerX, centerY - this.scalingManager.scale(120), iconSize * 0.75);
+        securityIcon.lineStyle(this.scalingManager.scale(3), 0x0066ff, 1);
+        securityIcon.strokeCircle(centerX, centerY - this.scalingManager.scale(120), iconSize * 0.875);
         
         // Lock icon in the middle
         const lockIcon = this.add.graphics();
         lockIcon.fillStyle(0x0066ff, 1);
-        lockIcon.fillRect(centerX - 10, centerY - 130, 20, 20);
-        lockIcon.fillRect(centerX - 15, centerY - 110, 30, 15);
+        lockIcon.fillRect(centerX - this.scalingManager.scale(10), centerY - this.scalingManager.scale(130), this.scalingManager.scale(20), this.scalingManager.scale(20));
+        lockIcon.fillRect(centerX - this.scalingManager.scale(15), centerY - this.scalingManager.scale(110), this.scalingManager.scale(30), this.scalingManager.scale(15));
         
         // Pulse animation for the security icon
         this.tweens.add({
@@ -164,14 +193,71 @@ class ChallengeA1Screen extends Phaser.Scene {
         });
     }
     
+    createBackButton() {
+        const backButton = this.add.container(this.scalingManager.scale(100), this.scalingManager.scale(50));
+        
+        // Button background
+        const buttonBg = this.add.graphics();
+        const buttonWidth = this.scalingManager.scale(120);
+        const buttonHeight = this.scalingManager.scale(50);
+        
+        buttonBg.fillStyle(0x222266, 1);
+        buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+        buttonBg.lineStyle(this.scalingManager.scale(2), 0x3366ff, 1);
+        buttonBg.strokeRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+        
+        // Button text
+        const buttonText = this.add.text(0, 0, 'BACK', {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: `${this.scalingManager.scale(18)}px`,
+            color: '#ffffff',
+            align: 'center'
+        });
+        
+        buttonText.setOrigin(0.5);
+        
+        // Add components to container
+        backButton.add(buttonBg);
+        backButton.add(buttonText);
+        
+        // Make interactive
+        backButton.setSize(buttonWidth, buttonHeight);
+        backButton.setInteractive({ useHandCursor: true });
+        
+        // Hover effects
+        backButton.on('pointerover', () => {
+            buttonBg.clear();
+            buttonBg.fillStyle(0x3366ff, 1);
+            buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+            buttonBg.lineStyle(this.scalingManager.scale(2), 0x66aaff, 1);
+            buttonBg.strokeRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+        });
+        
+        backButton.on('pointerout', () => {
+            buttonBg.clear();
+            buttonBg.fillStyle(0x222266, 1);
+            buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+            buttonBg.lineStyle(this.scalingManager.scale(2), 0x3366ff, 1);
+            buttonBg.strokeRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+        });
+        
+        // Click action
+        backButton.on('pointerdown', () => {
+            this.cameras.main.fade(500, 0, 0, 0);
+            this.time.delayedCall(500, () => {
+                this.scene.start('ChallengesScreen');
+            });
+        });
+    }
+    
     createGlitchEffect(textObject) {
         // Save original position and color
         const originalX = textObject.x;
         const originalY = textObject.y;
         
         // Random offset and color change
-        textObject.setX(originalX + Phaser.Math.Between(-5, 5));
-        textObject.setY(originalY + Phaser.Math.Between(-3, 3));
+        textObject.setX(originalX + Phaser.Math.Between(-5, 5) * this.scalingManager.scale(1));
+        textObject.setY(originalY + Phaser.Math.Between(-3, 3) * this.scalingManager.scale(1));
         textObject.setTint(Math.random() > 0.5 ? 0x00ffff : 0x0066ff);
         
         // Reset after short delay
@@ -205,14 +291,17 @@ class ChallengeA1Screen extends Phaser.Scene {
         const buttonContainer = this.add.container(centerX, buttonY);
         
         // Button background with blue gradient
+        const buttonWidth = this.scalingManager.scale(250);
+        const buttonHeight = this.scalingManager.scale(60);
+        
         const buttonBg = this.add.graphics();
         buttonBg.fillStyle(0x003366, 1);
-        buttonBg.fillRoundedRect(-100, -25, 200, 50, 10);
+        buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
         
         // Add button text
         const buttonText = this.add.text(0, 0, 'BEGIN CHALLENGE', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '22px',
+            fontSize: `${this.scalingManager.scale(22)}px`,
             fontStyle: 'bold',
             color: '#ffffff',
             align: 'center'
@@ -225,7 +314,7 @@ class ChallengeA1Screen extends Phaser.Scene {
         buttonContainer.add(buttonText);
         
         // Make the button interactive
-        buttonContainer.setSize(200, 50);
+        buttonContainer.setSize(buttonWidth, buttonHeight);
         buttonContainer.setInteractive({ useHandCursor: true });
         
         // Start with button hidden, then fade in
@@ -242,8 +331,8 @@ class ChallengeA1Screen extends Phaser.Scene {
         buttonContainer.on('pointerover', () => {
             buttonBg.clear();
             buttonBg.fillStyle(0x0066ff, 1);
-            buttonBg.fillRoundedRect(-100, -25, 200, 50, 10);
-            buttonText.setShadow(0, 0, '#ffffff', 5);
+            buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+            buttonText.setShadow(0, 0, '#ffffff', this.scalingManager.scale(5));
             this.tweens.add({
                 targets: buttonContainer,
                 scaleX: 1.05,
@@ -256,7 +345,7 @@ class ChallengeA1Screen extends Phaser.Scene {
         buttonContainer.on('pointerout', () => {
             buttonBg.clear();
             buttonBg.fillStyle(0x003366, 1);
-            buttonBg.fillRoundedRect(-100, -25, 200, 50, 10);
+            buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
             buttonText.setShadow(0, 0, '#ffffff', 0);
             this.tweens.add({
                 targets: buttonContainer,
@@ -275,7 +364,7 @@ class ChallengeA1Screen extends Phaser.Scene {
             // Start the game after a short delay
             this.time.delayedCall(500, () => {
                 // Navigate to the challenge gameplay scene
-                this.scene.start('ChallengeA1Gameplay');
+                this.scene.start('ChallengeA1GameplayExtension');
             });
         });
         
@@ -300,14 +389,15 @@ class ChallengeA1Screen extends Phaser.Scene {
         // Create emitter for blue particles floating up from the bottom
         const emitter = particles.createEmitter({
             x: { min: 0, max: this.cameras.main.width },
-            y: this.cameras.main.height + 10,
+            y: this.cameras.main.height + this.scalingManager.scale(10),
             scale: { start: 0.1, end: 0 },
-            speed: { min: 50, max: 100 },
+            speed: { min: this.scalingManager.scale(50), max: this.scalingManager.scale(100) },
             angle: { min: 260, max: 280 },
             lifespan: 4000,
             blendMode: 'ADD',
             frequency: 500,
-            tint: 0x0066ff
+            tint: 0x0066ff,
+            quantity: Math.max(1, Math.floor(this.cameras.main.width / 200)) // More particles for wider screens
         });
     }
 

@@ -1,5 +1,5 @@
 /**
- * Extension of the existing ChallengeA2Level2 class
+ * Extension of the improved ChallengeA2Level2 class
  * Adds the back and reset buttons to the scene
  */
 class ChallengeA2Level2Extension extends ChallengeA2Level2 {
@@ -12,23 +12,24 @@ class ChallengeA2Level2Extension extends ChallengeA2Level2 {
         super.create();
         
         // Add back and reset buttons
-        GameUIUtils.addLevelControlButtons(this, 'A2LevelSelect', 'ChallengeA2Level2');
+        GameUIUtils.addLevelControlButtons(this, 'A2LevelSelect', 'ChallengeA2Level2Extension');
     }
     
     // Override the showSuccessScreen method to add back button alongside next level
     showSuccessScreen() {
+        // FOLLOWING LEVEL 1 EXTENSION'S APPROACH WITH EXPANDED LAYOUT
         const centerX = this.cameras.main.width / 2;
         const centerY = this.cameras.main.height / 2;
         
         // Create success container
         const successContainer = this.add.container(centerX, centerY);
         
-        // Success background
-        const successBg = this.add.rectangle(0, 0, 600, 400, 0x001100, 0.95);
+        // Success background - LARGER to fit content
+        const successBg = this.add.rectangle(0, 0, 700, 500, 0x001100, 0.95);
         successBg.setStrokeStyle(3, 0x33cc99);
         
-        // Success header
-        const successHeader = this.add.text(0, -150, 'CHALLENGE COMPLETE!', {
+        // Success header - positioned higher
+        const successHeader = this.add.text(0, -200, 'CHALLENGE COMPLETE!', {
             fontFamily: 'Arial Black, Impact, sans-serif',
             fontSize: '36px',
             fontStyle: 'bold',
@@ -37,8 +38,8 @@ class ChallengeA2Level2Extension extends ChallengeA2Level2 {
         });
         successHeader.setOrigin(0.5);
         
-        // Success message
-        const successTitle = this.add.text(0, -90, 'You found a weakness in the hashing algorithm!', {
+        // Success message - more space
+        const successTitle = this.add.text(0, -140, 'You successfully cracked the password hash!', {
             fontFamily: 'Arial, sans-serif',
             fontSize: '24px',
             color: '#ffffff',
@@ -46,54 +47,55 @@ class ChallengeA2Level2Extension extends ChallengeA2Level2 {
         });
         successTitle.setOrigin(0.5);
         
-        // Explanation
-        const explanationTitle = this.add.text(0, -40, 'What you learned:', {
+        // Explanation - more space
+        const explanationTitle = this.add.text(0, -80, 'What you learned:', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '20px',
+            fontSize: '22px',
             fontStyle: 'bold',
             color: '#33cc99',
             align: 'center'
         });
         explanationTitle.setOrigin(0.5);
         
-        const explanation = [
-            "• Weak hashes allow attackers to find password collisions.",
+        const lessonsContent = [
+            "1. Weak hashing allows attackers to discover passwords using",
+            "   lookup tables and rainbow tables.",
             "",
-            "• If two different users have the same hashed password,",
-            "  an attacker can use one to log in as another!",
+            "2. MD5 is considered cryptographically broken and should not",
+            "   be used for password storage.",
             "",
-            "• Always use strong hashing algorithms like bcrypt,",
-            "  PBKDF2, or Argon2 to secure passwords."
+            "3. Modern password storage should use strong algorithms like",
+            "   bcrypt, Argon2, or PBKDF2 with unique salts per password."
         ].join('\n');
         
-        const explanationText = this.add.text(0, 50, explanation, {
+        const explanationText = this.add.text(0, 40, lessonsContent, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: '18px', // Larger font
             color: '#ffffff',
             align: 'center',
-            lineSpacing: 5
+            lineSpacing: 10 // More line spacing
         });
         explanationText.setOrigin(0.5);
         
-        // Next level button
-        const nextButton = this.add.rectangle(100, 150, 200, 40, 0x33cc99);
+        // Next level button - positioned lower and further to the right
+        const nextButton = this.add.rectangle(150, 180, 200, 50, 0x33cc99);
         nextButton.setInteractive({ useHandCursor: true });
         
-        const nextText = this.add.text(100, 150, 'NEXT LEVEL', {
+        const nextText = this.add.text(150, 180, 'NEXT LEVEL', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
+            fontSize: '20px', // Larger font
             color: '#ffffff',
             align: 'center'
         });
         nextText.setOrigin(0.5);
         
-        // Back to level select button
-        const backButton = this.add.rectangle(-100, 150, 200, 40, 0x116644);
+        // Back to level select button - positioned lower and further to the left
+        const backButton = this.add.rectangle(-150, 180, 200, 50, 0x116644);
         backButton.setInteractive({ useHandCursor: true });
         
-        const backText = this.add.text(-100, 150, 'LEVEL SELECT', {
+        const backText = this.add.text(-150, 180, 'LEVEL SELECT', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
+            fontSize: '20px', // Larger font
             color: '#ffffff',
             align: 'center'
         });

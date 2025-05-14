@@ -2,6 +2,20 @@
  * Utility class for common UI elements across game screens
  */
 class GameUIUtils {
+
+    /**
+ * Get the current game scale factor based on the default design size of 800x600
+ * @param {Phaser.Scene} scene - The current scene
+ * @returns {object} - The scale factors for width and height
+ */
+    static getScaleFactor(scene) {
+    const designWidth = 800;
+    const designHeight = 600;
+    const scaleX = scene.cameras.main.width / designWidth;
+    const scaleY = scene.cameras.main.height / designHeight;
+    
+    return { x: scaleX, y: scaleY };
+}
     /**
      * Create a back button to navigate to the previous scene
      * 
@@ -264,7 +278,8 @@ class GameUIUtils {
                 if (yesHitArea.contains(pointer.x - confirmContainer.x, pointer.y - confirmContainer.y)) {
                     scene.cameras.main.fade(500, 0, 0, 0);
                     scene.time.delayedCall(500, () => {
-                        scene.scene.start(targetScene);
+                        // Properly restart the scene by stopping it first
+                        scene.scene.restart();
                     });
                     confirmContainer.destroy();
                 } else if (noHitArea.contains(pointer.x - confirmContainer.x, pointer.y - confirmContainer.y)) {

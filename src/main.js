@@ -3,9 +3,18 @@
 
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+        parent: 'game',
+        width: '100%',
+        height: '100%',
+        min: {
+            width: 800,
+            height: 600
+        }
+    },
     backgroundColor: '#000000',
+    
     scene: [
         TitleScreen, 
         ChallengesScreen,
@@ -20,7 +29,14 @@ const config = {
         A2LevelSelect,
         ChallengeA2Level1Extension,
         ChallengeA2Level2Extension,
-        //ChallengeA2Level3Extension,
+        ChallengeA2Level3Extension,
+        ChallengeA2Level4Extension,
+        //A3 Challenge scenes
+        ChallengeA3Screen,
+        A3LevelSelect,
+        ChallengeA3Level1Extension,
+        ChallengeA3Level2Extension,
+        ChallengeA3Level3Extension,
         GameScene
     ],
     physics: {

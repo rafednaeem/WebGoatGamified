@@ -1,17 +1,22 @@
 class TitleScreen extends Phaser.Scene {
     constructor() {
         super('TitleScreen');
+        this.scalingManager = null;
     }
 
     preload() {
         // Load assets
         console.log('TitleScreen preload called');
         this.load.image('button', 'assets/button.png');
-        // You can add more assets here, like background textures or logo
+        this.load.image('logo_bg', 'assets/button.png'); // Placeholder for logo background
     }
 
     create() {
         console.log('TitleScreen create called');
+        
+        // Initialize the scaling manager
+        this.scalingManager = new ScalingManager(this);
+        
         // Background with subtle pattern
         this.createBackground();
         
@@ -24,30 +29,49 @@ class TitleScreen extends Phaser.Scene {
         // Add additional visual flair
         this.createParticleEffects();
         
-        // Add ambient audio if desired
-        // this.sound.play('title-music', { loop: true, volume: 0.5 });
+        // Listen for resize events
+        this.scale.on('resize', this.refreshUI, this);
+    }
+    
+    refreshUI() {
+        // Update scaling manager
+        if (this.scalingManager) {
+            this.scalingManager.updateScaleFactor();
+        }
+        
+        // Clear the existing display
+        this.children.removeAll(true);
+        
+        // Recreate the UI elements
+        this.createBackground();
+        this.createTitle();
+        this.createStartButton();
+        this.createParticleEffects();
     }
     
     createBackground() {
-        // Create a dark background
-        const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x000000);
+        // Create a dark background that fills the entire screen
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        const bg = this.add.rectangle(0, 0, width, height, 0x000000);
         bg.setOrigin(0, 0);
         
         // Create a grid pattern overlay
-        const gridSize = 30;
+        const gridSize = Math.min(width, height) / 20; // Responsive grid size
         const graphics = this.add.graphics();
         graphics.lineStyle(1, 0x330000, 0.3);
         
         // Draw vertical lines
-        for(let x = 0; x < this.cameras.main.width; x += gridSize) {
+        for(let x = 0; x < width; x += gridSize) {
             graphics.moveTo(x, 0);
-            graphics.lineTo(x, this.cameras.main.height);
+            graphics.lineTo(x, height);
         }
         
         // Draw horizontal lines
-        for(let y = 0; y < this.cameras.main.height; y += gridSize) {
+        for(let y = 0; y < height; y += gridSize) {
             graphics.moveTo(0, y);
-            graphics.lineTo(this.cameras.main.width, y);
+            graphics.lineTo(width, y);
         }
         
         graphics.strokePath();
@@ -62,27 +86,32 @@ class TitleScreen extends Phaser.Scene {
             0.8, 0.8, 0, 0
         );
         
-        vignette.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+        vignette.fillRect(0, 0, width, height);
     }
     
     createTitle() {
         const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 3;
+        const centerY = this.cameras.main.height * 0.3; // Positioned higher up
+        
+        // Create a subtle glow background for the title
+        const glowBg = this.add.graphics();
+        glowBg.fillStyle(0x330000, 0.3);
+        glowBg.fillCircle(centerX, centerY, this.scalingManager.scale(150));
         
         // Main title with a red glow effect
         const title = this.add.text(centerX, centerY, 'WEBGOAT', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '80px',
+            fontSize: `${this.scalingManager.scale(80)}px`, // Scale the font size
             fontStyle: 'bold',
             color: '#ffffff',
             align: 'center',
             stroke: '#ff0000',
-            strokeThickness: 2,
+            strokeThickness: this.scalingManager.scale(2),
             shadow: {
-                offsetX: 3,
-                offsetY: 3,
+                offsetX: this.scalingManager.scale(3),
+                offsetY: this.scalingManager.scale(3),
                 color: '#ff0000',
-                blur: 10,
+                blur: this.scalingManager.scale(10),
                 stroke: true,
                 fill: true
             }
@@ -92,9 +121,9 @@ class TitleScreen extends Phaser.Scene {
         
         // Create cybersecurity-themed subtitle with typewriter effect
         const subtitleText = 'A Cyber Security Adventure';
-        const subtitle = this.add.text(centerX, centerY + 80, '', {
+        const subtitle = this.add.text(centerX, centerY + this.scalingManager.scale(80), '', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             color: '#ff3333',
             align: 'center'
         });
@@ -145,8 +174,8 @@ class TitleScreen extends Phaser.Scene {
         const originalColor = textObject.style.color;
         
         // Random offset and color change
-        textObject.setX(originalX + Phaser.Math.Between(-5, 5));
-        textObject.setY(originalY + Phaser.Math.Between(-3, 3));
+        textObject.setX(originalX + Phaser.Math.Between(-5, 5) * this.scalingManager.scale(1));
+        textObject.setY(originalY + Phaser.Math.Between(-3, 3) * this.scalingManager.scale(1));
         textObject.setTint(Math.random() > 0.5 ? 0x00ffff : 0xff00ff);
         
         // Reset after short delay
@@ -190,14 +219,17 @@ class TitleScreen extends Phaser.Scene {
         const buttonContainer = this.add.container(centerX, buttonY);
         
         // Button background with red gradient
+        const buttonWidth = this.scalingManager.scale(250);
+        const buttonHeight = this.scalingManager.scale(60);
+        
         const buttonBg = this.add.graphics();
         buttonBg.fillStyle(0x990000, 1);
-        buttonBg.fillRoundedRect(-100, -25, 200, 50, 10);
+        buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
         
-        // Add button text
+        // Add button text with scaled font size
         const buttonText = this.add.text(0, 0, 'START GAME', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             fontStyle: 'bold',
             color: '#ffffff',
             align: 'center'
@@ -210,15 +242,15 @@ class TitleScreen extends Phaser.Scene {
         buttonContainer.add(buttonText);
         
         // Make the button interactive
-        buttonContainer.setSize(200, 50);
+        buttonContainer.setSize(buttonWidth, buttonHeight);
         buttonContainer.setInteractive({ useHandCursor: true });
         
         // Hover effects
         buttonContainer.on('pointerover', () => {
             buttonBg.clear();
             buttonBg.fillStyle(0xff0000, 1);
-            buttonBg.fillRoundedRect(-100, -25, 200, 50, 10);
-            buttonText.setShadow(0, 0, '#ffffff', 5);
+            buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
+            buttonText.setShadow(0, 0, '#ffffff', this.scalingManager.scale(5));
             this.tweens.add({
                 targets: buttonContainer,
                 scaleX: 1.05,
@@ -231,7 +263,7 @@ class TitleScreen extends Phaser.Scene {
         buttonContainer.on('pointerout', () => {
             buttonBg.clear();
             buttonBg.fillStyle(0x990000, 1);
-            buttonBg.fillRoundedRect(-100, -25, 200, 50, 10);
+            buttonBg.fillRoundedRect(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight, buttonHeight/5);
             buttonText.setShadow(0, 0, '#ffffff', 0);
             this.tweens.add({
                 targets: buttonContainer,
@@ -276,14 +308,29 @@ class TitleScreen extends Phaser.Scene {
         // Create emitter for red particles floating up from the bottom
         const emitter = particles.createEmitter({
             x: { min: 0, max: this.cameras.main.width },
-            y: this.cameras.main.height + 10,
+            y: this.cameras.main.height + this.scalingManager.scale(10),
             scale: { start: 0.1, end: 0 },
-            speed: { min: 50, max: 100 },
+            speed: { min: this.scalingManager.scale(50), max: this.scalingManager.scale(100) },
             angle: { min: 260, max: 280 },
             lifespan: 4000,
             blendMode: 'ADD',
             frequency: 500,
-            tint: 0xff0000
+            tint: 0xff0000,
+            quantity: Math.max(1, Math.floor(this.cameras.main.width / 200)) // More particles for wider screens
+        });
+        
+        // Add a second emitter for occasional floating particles from sides
+        const sideEmitter = particles.createEmitter({
+            x: { min: -10, max: this.cameras.main.width + 10 },
+            y: { min: this.cameras.main.height * 0.3, max: this.cameras.main.height * 0.7 },
+            scale: { start: 0.05, end: 0 },
+            speedX: { min: -this.scalingManager.scale(20), max: this.scalingManager.scale(20) },
+            speedY: { min: -this.scalingManager.scale(40), max: -this.scalingManager.scale(20) },
+            lifespan: { min: 3000, max: 6000 },
+            blendMode: 'ADD',
+            frequency: 2000,
+            tint: [0xff3333, 0xff6666, 0xffcccc],
+            quantity: 1
         });
     }
 
@@ -291,15 +338,3 @@ class TitleScreen extends Phaser.Scene {
         // Add any frame-by-frame updates here
     }
 }
-
-// Usage example (add this to your game configuration)
-/*
-const config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    scene: [TitleScreen, GameScene] // Add your game scenes here
-};
-
-const game = new Phaser.Game(config);
-*/

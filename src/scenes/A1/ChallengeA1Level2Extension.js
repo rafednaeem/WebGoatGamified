@@ -1,18 +1,37 @@
 /**
  * Extension of the existing ChallengeA1Level2 class
- * Adds the back and reset buttons to the scene
+ * Adds the back and reset buttons to the scene and enhances the UI with responsive scaling
  */
 class ChallengeA1Level2Extension extends ChallengeA1Level2 {
     constructor() {
         super();
     }
+    init() {
+        // Reset any state variables when the scene is started/restarted
+        this.currentStep = 0;
+        this.currentUserId = 1001;
+    }
 
     create() {
+        // Initialize the scaling manager
+        this.scalingManager = new ScalingManager(this);
+        
         // Call the original create method
         super.create();
         
-        // Add back and reset buttons
-        GameUIUtils.addLevelControlButtons(this, 'A1LevelSelect', 'ChallengeA1Level2');
+        // Add back and reset buttons with proper scaling
+        GameUIUtils.addLevelControlButtons(this, 'A1LevelSelect', 'ChallengeA1Level2Extension');
+        
+        // Listen for resize events
+        this.scale.on('resize', this.handleResize, this);
+    }
+    
+    handleResize() {
+        // Update scaling manager
+        super.handleResize();
+        
+        // Redraw buttons after resize
+        GameUIUtils.addLevelControlButtons(this, 'A1LevelSelect', 'ChallengeA1Level2Extension');
     }
     
     // Override the showCompletionScreen method to add back button alongside next level
@@ -23,14 +42,17 @@ class ChallengeA1Level2Extension extends ChallengeA1Level2 {
         // Create completion container
         const completionContainer = this.add.container(centerX, centerY);
         
-        // Background
-        const completionBg = this.add.rectangle(0, 0, 600, 400, 0x000022, 0.95);
-        completionBg.setStrokeStyle(3, 0x00ff00);
+        // Background with scaled dimensions
+        const bgWidth = this.scalingManager.scale(600);
+        const bgHeight = this.scalingManager.scale(400);
         
-        // Completion message
-        const completionTitle = this.add.text(0, -150, 'CHALLENGE A1 LEVEL 2 COMPLETE', {
+        const completionBg = this.add.rectangle(0, 0, bgWidth, bgHeight, 0x000022, 0.95);
+        completionBg.setStrokeStyle(this.scalingManager.scale(3), 0x00ff00);
+        
+        // Completion message with scaled font
+        const completionTitle = this.add.text(0, -this.scalingManager.scale(150), 'CHALLENGE A1 LEVEL 2 COMPLETE', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '36px',
+            fontSize: `${this.scalingManager.scale(36)}px`,
             fontStyle: 'bold',
             color: '#00ff00',
             align: 'center'
@@ -38,9 +60,9 @@ class ChallengeA1Level2Extension extends ChallengeA1Level2 {
         completionTitle.setOrigin(0.5);
         
         // Lessons learned
-        const lessonsTitle = this.add.text(0, -80, 'LESSONS LEARNED:', {
+        const lessonsTitle = this.add.text(0, -this.scalingManager.scale(80), 'LESSONS LEARNED:', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             fontStyle: 'bold',
             color: '#ffffff',
             align: 'center'
@@ -59,34 +81,39 @@ class ChallengeA1Level2Extension extends ChallengeA1Level2 {
             "   and authorized server-side before access is granted."
         ].join('\n');
         
-        const lessons = this.add.text(0, 20, lessonsContent, {
+        const lessons = this.add.text(0, this.scalingManager.scale(20), lessonsContent, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#cccccc',
             align: 'center',
-            lineSpacing: 5
+            lineSpacing: this.scalingManager.scale(5)
         });
         lessons.setOrigin(0.5);
         
-        // Next Level button
-        const nextButton = this.add.rectangle(100, 150, 200, 40, 0x33cc33);
+        // Next Level button with scaled dimensions and positioning
+        const buttonWidth = this.scalingManager.scale(200);
+        const buttonHeight = this.scalingManager.scale(40);
+        const buttonY = this.scalingManager.scale(150);
+        const buttonSpacing = this.scalingManager.scale(200);
+        
+        const nextButton = this.add.rectangle(buttonSpacing/2, buttonY, buttonWidth, buttonHeight, 0x33cc33);
         nextButton.setInteractive({ useHandCursor: true });
         
-        const nextText = this.add.text(100, 150, 'NEXT LEVEL', {
+        const nextText = this.add.text(buttonSpacing/2, buttonY, 'NEXT LEVEL', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
+            fontSize: `${this.scalingManager.scale(18)}px`,
             color: '#ffffff',
             align: 'center'
         });
         nextText.setOrigin(0.5);
         
         // Back to level select button
-        const backButton = this.add.rectangle(-100, 150, 200, 40, 0x3366aa);
+        const backButton = this.add.rectangle(-buttonSpacing/2, buttonY, buttonWidth, buttonHeight, 0x3366aa);
         backButton.setInteractive({ useHandCursor: true });
         
-        const backText = this.add.text(-100, 150, 'LEVEL SELECT', {
+        const backText = this.add.text(-buttonSpacing/2, buttonY, 'LEVEL SELECT', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
+            fontSize: `${this.scalingManager.scale(18)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -150,10 +177,16 @@ class ChallengeA1Level2Extension extends ChallengeA1Level2 {
         
         particles.createEmitter({
             x: { min: 0, max: this.cameras.main.width },
-            y: -50,
-            speed: { min: 100, max: 200 },
+            y: -this.scalingManager.scale(50),
+            speed: { 
+                min: this.scalingManager.scale(100), 
+                max: this.scalingManager.scale(200) 
+            },
             angle: { min: 80, max: 100 },
-            scale: { start: 0.2, end: 0 },
+            scale: { 
+                start: this.scalingManager.scale(0.2), 
+                end: 0 
+            },
             lifespan: 4000,
             quantity: 2,
             frequency: 40,

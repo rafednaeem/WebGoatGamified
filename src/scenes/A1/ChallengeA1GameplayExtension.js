@@ -1,18 +1,74 @@
 /**
  * Extension of the existing ChallengeA1Gameplay class
- * Adds the back and reset buttons to the scene
+ * Adds the back and reset buttons to the scene and enhances the UI with responsive scaling
  */
 class ChallengeA1GameplayExtension extends ChallengeA1Gameplay {
     constructor() {
         super();
+        this.scalingManager = null;
+    }
+    // Add this method to the ChallengeA1GameplayExtension class
+    init() {
+        this.currentStep = 0;
+        this.cursorTimer = null;
+        // Make sure any timers are cleared
+        if (this.time) {
+            this.time.removeAllEvents();
+        }
+        if (this.input && this.input.keyboard) {
+            this.input.keyboard.removeAllKeys();
+            this.input.keyboard.enabled = true;
+        }
     }
 
     create() {
+        this.scalingManager = new ScalingManager(this);
+        
         // Call the original create method
         super.create();
         
-        // Add back and reset buttons
-        GameUIUtils.addLevelControlButtons(this, 'A1LevelSelect', 'ChallengeA1Gameplay');
+        // Add control buttons
+        this.addControlButtons();
+        
+        // Listen for resize events - but make sure we don't add duplicate listeners
+        this.scale.off('resize', this.handleResize, this); // Remove any existing listener
+        this.scale.on('resize', this.handleResize, this);  // Add fresh listener
+    }
+    
+    handleResize() {
+        // Update scaling manager
+        if (this.scalingManager) {
+            this.scalingManager.updateScaleFactor();
+            
+            // Redraw buttons after resize
+            this.addControlButtons();
+        }
+    }
+    
+    addControlButtons() {
+        // Add back and reset buttons with proper scaling
+        GameUIUtils.addLevelControlButtons(this, 'A1LevelSelect', 'ChallengeA1GameplayExtension');
+    }
+
+    shutdown() {
+        if (this.scalingManager) {
+            this.scalingManager.destroy();
+            this.scalingManager = null;
+        }
+        
+        // Clean up any timers
+        if (this.cursorTimer) {
+            this.cursorTimer.remove();
+            this.cursorTimer = null;
+        }
+        
+        // Remove event listeners
+        this.scale.off('resize', this.handleResize, this);
+        
+        // Call super shutdown if it exists
+        if (super.shutdown) {
+            super.shutdown();
+        }
     }
     
     // Override the showSuccessScreen method to add back button alongside next level
@@ -33,14 +89,17 @@ class ChallengeA1GameplayExtension extends ChallengeA1Gameplay {
         // Create success container
         const successContainer = this.add.container(centerX, centerY);
         
-        // Success background
-        const successBg = this.add.rectangle(0, 0, 600, 400, 0x000000, 0.9);
-        successBg.setStrokeStyle(2, 0x00ff00);
+        // Success background with scaled dimensions
+        const successWidth = this.scalingManager.scale(600);
+        const successHeight = this.scalingManager.scale(400);
         
-        // Success header
-        const successHeader = this.add.text(0, -150, 'MISSION ACCOMPLISHED', {
+        const successBg = this.add.rectangle(0, 0, successWidth, successHeight, 0x000000, 0.9);
+        successBg.setStrokeStyle(this.scalingManager.scale(2), 0x00ff00);
+        
+        // Success header with scaled font
+        const successHeader = this.add.text(0, -this.scalingManager.scale(150), 'MISSION ACCOMPLISHED', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '30px',
+            fontSize: `${this.scalingManager.scale(30)}px`,
             fontStyle: 'bold',
             color: '#00ff00',
             align: 'center'
@@ -48,18 +107,18 @@ class ChallengeA1GameplayExtension extends ChallengeA1Gameplay {
         successHeader.setOrigin(0.5);
         
         // User info
-        const userInfo = this.add.text(0, -100, `You are now logged in as: ${username}`, {
+        const userInfo = this.add.text(0, -this.scalingManager.scale(100), `You are now logged in as: ${username}`, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '20px',
+            fontSize: `${this.scalingManager.scale(20)}px`,
             color: '#ffffff',
             align: 'center'
         });
         userInfo.setOrigin(0.5);
         
         // Lesson title
-        const lessonTitle = this.add.text(0, -50, 'WHAT YOU LEARNED:', {
+        const lessonTitle = this.add.text(0, -this.scalingManager.scale(50), 'WHAT YOU LEARNED:', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
+            fontSize: `${this.scalingManager.scale(18)}px`,
             fontStyle: 'bold',
             color: '#3399ff',
             align: 'center'
@@ -77,34 +136,39 @@ class ChallengeA1GameplayExtension extends ChallengeA1Gameplay {
             "  expiration policies, and token validation."
         ].join('\n');
         
-        const lesson = this.add.text(0, 50, lessonContent, {
+        const lesson = this.add.text(0, this.scalingManager.scale(50), lessonContent, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center',
-            lineSpacing: 5
+            lineSpacing: this.scalingManager.scale(5)
         });
         lesson.setOrigin(0.5);
         
-        // Next level button
-        const nextButton = this.add.rectangle(100, 150, 200, 40, 0x00aa00);
+        // Next level button with scaled dimensions and positioning
+        const buttonWidth = this.scalingManager.scale(200);
+        const buttonHeight = this.scalingManager.scale(40);
+        const buttonY = this.scalingManager.scale(150);
+        const buttonSpacing = this.scalingManager.scale(200);
+        
+        const nextButton = this.add.rectangle(buttonSpacing/2, buttonY, buttonWidth, buttonHeight, 0x00aa00);
         nextButton.setInteractive({ useHandCursor: true });
         
-        const nextText = this.add.text(100, 150, 'NEXT LEVEL', {
+        const nextText = this.add.text(buttonSpacing/2, buttonY, 'NEXT LEVEL', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
         nextText.setOrigin(0.5);
         
         // Back to level select button
-        const backButton = this.add.rectangle(-100, 150, 200, 40, 0x0066aa);
+        const backButton = this.add.rectangle(-buttonSpacing/2, buttonY, buttonWidth, buttonHeight, 0x0066aa);
         backButton.setInteractive({ useHandCursor: true });
         
-        const backText = this.add.text(-100, 150, 'LEVEL SELECT', {
+        const backText = this.add.text(-buttonSpacing/2, buttonY, 'LEVEL SELECT', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -185,10 +249,16 @@ class ChallengeA1GameplayExtension extends ChallengeA1Gameplay {
         
         particles.createEmitter({
             x: { min: 0, max: this.cameras.main.width },
-            y: -50,
-            speed: { min: 100, max: 200 },
+            y: -this.scalingManager.scale(50),
+            speed: { 
+                min: this.scalingManager.scale(100), 
+                max: this.scalingManager.scale(200) 
+            },
             angle: { min: 80, max: 100 },
-            scale: { start: 0.1, end: 0 },
+            scale: { 
+                start: this.scalingManager.scale(0.1), 
+                end: 0 
+            },
             lifespan: 4000,
             quantity: 1,
             frequency: 200,
@@ -196,4 +266,6 @@ class ChallengeA1GameplayExtension extends ChallengeA1Gameplay {
             tint: 0x00ff00
         });
     }
+    
+    // Add any additional methods needed for the extension
 }

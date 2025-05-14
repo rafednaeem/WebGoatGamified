@@ -1,753 +1,803 @@
-class ChallengeA2Level2 extends Phaser.Scene {
-    constructor() {
-        super('ChallengeA2Level2');
-        this.currentStep = 0;
-        
-        // Define the plaintext passwords and their hashes
-        this.plaintextPasswords = [
-            'password123',
-            'p@ssw0rd',
-            'admin2024',
-            'admin!2024',
-            'secure2024',
-            'letmein',
-            '123456'
-        ];
-        
-        // MD5 hashes of the passwords
-        this.hashedPasswords = [
-            '5f4dcc3b5aa765d61d8327deb882cf99',
-            'e99a18c428cb38d5f260853678922e03',
-            '21232f297a57a5a743894a0e4a801fc3', // Collision with the next one
-            '21232f297a57a5a743894a0e4a801fc3', // Collision with the previous one
-            '7c6a180b36896a0a8c02787eeafb0e4c',
-            '0d107d09f5bbe40cade3de5c71e9e9b7',
-            'e10adc3949ba59abbe56e057f20f883e'
-        ];
-        
-        // Track which passwords are selected by the player
-        this.selectedPasswords = [];
-        this.collisionFound = false;
-    }
 
-    preload() {
-        // Load any specific assets for this challenge
-        this.load.image('terminal_bg', 'assets/terminal_bg.png');
-    }
+    
+    // Simple black background
+    class ChallengeA2Level2 extends Phaser.Scene {
+constructor() {
+    super('ChallengeA2Level2');
+    this.currentStep = 0;
+    this.passwordDatabase = [
+        { username: 'admin', passwordHash: 'e10adc3949ba59abbe56e057f20f883e' },
+        { username: 'user1', passwordHash: '5f4dcc3b5aa765d61d8327deb882cf99' },
+        { username: 'securityOfficer', passwordHash: '098f6bcd4621d373cade4e832627b4f6' }
+    ];
+    this.commonPasswords = [
+        { password: '123456', hash: 'e10adc3949ba59abbe56e057f20f883e' },
+        { password: 'password', hash: '5f4dcc3b5aa765d61d8327deb882cf99' },
+        { password: 'test', hash: '098f6bcd4621d373cade4e832627b4f6' },
+        { password: 'qwerty', hash: 'd8578edf8458ce06fbc5bb76a58c5ca4' },
+        { password: 'admin123', hash: '0192023a7bbd73250516f069df18b500' },
+        { password: 'welcome', hash: '40be4e59b9a2a2b5dffb918c0e86b3d7' }
+    ];
+    this.targetAccount = this.passwordDatabase[0]; // Targeting admin account
+    this.selectedPasswordHash = '';
+    this.scalingManager = null;
+}
 
-    create() {
-        // Set up the challenge gameplay screen
-        this.createBackground();
-        this.createStartMessage();
+preload() {
+    // Load any specific assets for this challenge
+    this.load.image('terminal_bg', 'assets/terminal_bg.png');
+}
+
+create() {
+    // Initialize the scaling manager
+    this.scalingManager = new ScalingManager(this);
+    
+    // Set up the challenge gameplay screen
+    this.createBackground();
+    this.createStartMessage();
+}
+
+createBackground() {
+    // Create a dark background with green tint
+    const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x002211);
+    bg.setOrigin(0, 0);
+    
+    // Create a subtle grid pattern
+    const gridSize = 40;
+    const graphics = this.add.graphics();
+    graphics.lineStyle(1, 0x003322, 0.2);
+    
+    // Draw vertical lines
+    for(let x = 0; x < this.cameras.main.width; x += gridSize) {
+        graphics.moveTo(x, 0);
+        graphics.lineTo(x, this.cameras.main.height);
     }
     
-    createBackground() {
-        // Create a dark background with green tint
-        const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x002211);
-        bg.setOrigin(0, 0);
-        
-        // Create a subtle grid pattern (darker than challenge select screen)
-        const gridSize = 40;
-        const graphics = this.add.graphics();
-        graphics.lineStyle(1, 0x003322, 0.2);
-        
-        // Draw vertical lines
-        for(let x = 0; x < this.cameras.main.width; x += gridSize) {
-            graphics.moveTo(x, 0);
-            graphics.lineTo(x, this.cameras.main.height);
-        }
-        
-        // Draw horizontal lines
-        for(let y = 0; y < this.cameras.main.height; y += gridSize) {
-            graphics.moveTo(0, y);
-            graphics.lineTo(this.cameras.main.width, y);
-        }
-        
-        graphics.strokePath();
+    // Draw horizontal lines
+    for(let y = 0; y < this.cameras.main.height; y += gridSize) {
+        graphics.moveTo(0, y);
+        graphics.lineTo(this.cameras.main.width, y);
     }
     
-    createStartMessage() {
-        const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 4;
-        
-        // Create the message with animation
-        const message = this.add.text(centerX, centerY, 'CHALLENGE A2: LEVEL 2', {
-            fontFamily: 'Courier New, monospace',
-            fontSize: '32px',
-            fontStyle: 'bold',
-            color: '#00ff66', // Hacker green
-            align: 'center'
-        });
-        
-        message.setOrigin(0.5);
-        message.setAlpha(0);
-        
-        // Animate the message appearance with a typewriter effect
-        this.tweens.add({
-            targets: message,
-            alpha: 1,
-            duration: 800,
-            ease: 'Power2',
-            onComplete: () => {
-                // Add blinking cursor effect
-                const cursor = this.add.text(message.x + message.width / 2 + 10, message.y, '_', {
-                    fontFamily: 'Courier New, monospace',
-                    fontSize: '32px',
-                    color: '#00ff66'
-                });
-                cursor.setOrigin(0.5);
-                
-                this.tweens.add({
-                    targets: cursor,
-                    alpha: 0,
-                    duration: 500,
-                    yoyo: true,
-                    repeat: 5,
-                    onComplete: () => {
-                        cursor.destroy();
-                        
-                        // Fade out the initial message to make room for the challenge interface
-                        this.time.delayedCall(1000, () => {
-                            this.tweens.add({
-                                targets: message,
-                                alpha: 0,
-                                y: centerY - 50,
-                                duration: 800,
-                                ease: 'Power2'
-                            });
-                        });
-                    }
-                });
-            }
-        });
-        
-        // Add a subtitle that appears after the main message
-        const subtitle = this.add.text(centerX, centerY + 50, 'Hash Clash: The Weak Algorithm', {
-            fontFamily: 'Courier New, monospace',
-            fontSize: '20px',
-            color: '#33cc99',
-            align: 'center'
-        });
-        
-        subtitle.setOrigin(0.5);
-        subtitle.setAlpha(0);
-        
-        this.tweens.add({
-            targets: subtitle,
-            alpha: 1,
-            duration: 800,
-            delay: 1200,
-            ease: 'Power2',
-            onComplete: () => {
-                this.time.delayedCall(2000, () => {
-                    this.tweens.add({
-                        targets: subtitle,
-                        alpha: 0,
-                        y: centerY,
-                        duration: 800,
-                        ease: 'Power2',
-                        onComplete: () => {
-                            this.showInstructionPopup();
-                        }
-                    });
-                });
-            }
-        });
-    }
+    graphics.strokePath();
+}
+
+createStartMessage() {
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 4;
     
-    showInstructionPopup() {
-        const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 2;
-        
-        // Create popup container
-        const popupContainer = this.add.container(centerX, centerY);
-        
-        // Tutorial popup background
-        const popupBg = this.add.rectangle(0, 0, 500, 300, 0x000000, 0.9);
-        popupBg.setStrokeStyle(2, 0x33cc99);
-        
-        // Popup header
-        const popupHeader = this.add.text(0, -120, 'WEAK HASHING', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        popupHeader.setOrigin(0.5);
-        
-        // Popup content
-        const content = [
-            "Hashing is used to store passwords securely.",
-            "",
-            "Weak hashing algorithms allow attackers to crack",
-            "passwords quickly.",
-            "",
-            "Your goal: Compare hashed passwords and find a collision!"
-        ].join('\n');
-        
-        const popupContent = this.add.text(0, 0, content, {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
-            align: 'center',
-            lineSpacing: 5
-        });
-        popupContent.setOrigin(0.5);
-        
-        // Continue button
-        const buttonBg = this.add.rectangle(0, 110, 150, 40, 0x33cc99);
-        buttonBg.setInteractive({ useHandCursor: true });
-        
-        const buttonText = this.add.text(0, 110, 'START', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
-            align: 'center'
-        });
-        buttonText.setOrigin(0.5);
-        
-        // Add components to the popup container
-        popupContainer.add(popupBg);
-        popupContainer.add(popupHeader);
-        popupContainer.add(popupContent);
-        popupContainer.add(buttonBg);
-        popupContainer.add(buttonText);
-        
-        // Animation for popup appearance
-        popupContainer.setAlpha(0);
-        popupContainer.setScale(0.8);
-        
-        this.tweens.add({
-            targets: popupContainer,
-            alpha: 1,
-            scale: 1,
-            duration: 300,
-            ease: 'Power2'
-        });
-        
-        // Continue button action
-        buttonBg.on('pointerdown', () => {
+    // Create the message with animation
+    const message = this.add.text(centerX, centerY, 'CHALLENGE A2 LEVEL 2', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '32px',
+        fontStyle: 'bold',
+        color: '#00ff66', // Hacker green
+        align: 'center'
+    });
+    
+    message.setOrigin(0.5);
+    message.setAlpha(0);
+    
+    // Animate the message appearance with a typewriter effect
+    this.tweens.add({
+        targets: message,
+        alpha: 1,
+        duration: 800,
+        ease: 'Power2',
+        onComplete: () => {
+            // Add blinking cursor effect
+            const cursor = this.add.text(message.x + message.width / 2 + 10, message.y, '_', {
+                fontFamily: 'Courier New, monospace',
+                fontSize: '32px',
+                color: '#00ff66'
+            });
+            cursor.setOrigin(0.5);
+            
             this.tweens.add({
-                targets: popupContainer,
+                targets: cursor,
                 alpha: 0,
-                scale: 0.8,
-                duration: 300,
-                ease: 'Power2',
+                duration: 500,
+                yoyo: true,
+                repeat: 5,
                 onComplete: () => {
-                    popupContainer.destroy();
-                    this.showHashComparisonGame();
+                    cursor.destroy();
+                    
+                    // Fade out the initial message to make room for the challenge interface
+                    this.time.delayedCall(1000, () => {
+                        this.tweens.add({
+                            targets: message,
+                            alpha: 0,
+                            y: centerY - 50,
+                            duration: 800,
+                            ease: 'Power2'
+                        });
+                    });
                 }
             });
-        });
-        
-        // Hover effects for button
-        buttonBg.on('pointerover', () => {
-            buttonBg.fillColor = 0x66eebb;
-        });
-        
-        buttonBg.on('pointerout', () => {
-            buttonBg.fillColor = 0x33cc99;
-        });
-    }
+        }
+    });
     
-    showHashComparisonGame() {
-        const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 2;
-        
-        // Create game container
-        const gameContainer = this.add.container(centerX, centerY);
-        
-        // Game background
-        const gameBg = this.add.rectangle(0, 0, 750, 450, 0x001100, 0.9);
-        gameBg.setStrokeStyle(2, 0x33cc99);
-        
-        // Game title
-        const gameTitle = this.add.text(0, -200, 'FIND THE HASH COLLISION', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '28px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        gameTitle.setOrigin(0.5);
-        
-        // Instructions
-        const instructions = this.add.text(0, -165, 'Select two passwords that generate the same hash value', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
-            align: 'center'
-        });
-        instructions.setOrigin(0.5);
-        
-        // Add hash algorithm indication
-        const algorithmText = this.add.text(0, -140, 'Using MD5 Hashing Algorithm', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '14px',
-            fontStyle: 'italic',
-            color: '#ffcc00',
-            align: 'center'
-        });
-        algorithmText.setOrigin(0.5);
-        
-        // Divider line
-        const dividerLine = this.add.graphics();
-        dividerLine.lineStyle(2, 0x33cc99, 0.7);
-        dividerLine.lineBetween(0, -120, 700, -120);
-        
-        // Section headers
-        const leftHeader = this.add.text(-300, -100, 'PLAINTEXT PASSWORDS', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        leftHeader.setOrigin(0.5);
-        
-        const rightHeader = this.add.text(300, -100, 'HASHED VALUES (MD5)', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        rightHeader.setOrigin(0.5);
-        
-        // Add components to the game container
-        gameContainer.add(gameBg);
-        gameContainer.add(gameTitle);
-        gameContainer.add(instructions);
-        gameContainer.add(algorithmText);
-        gameContainer.add(dividerLine);
-        gameContainer.add(leftHeader);
-        gameContainer.add(rightHeader);
-        
-        // Create password buttons
-        this.createPasswordButtons(gameContainer);
-        
-        // Animation for game appearance
-        gameContainer.setAlpha(0);
-        
+    // Add a subtitle that appears after the main message
+    const subtitle = this.add.text(centerX, centerY + 50, 'Hash Cracking Challenge', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '20px',
+        color: '#33cc99',
+        align: 'center'
+    });
+    
+    subtitle.setOrigin(0.5);
+    subtitle.setAlpha(0);
+    
+    this.tweens.add({
+        targets: subtitle,
+        alpha: 1,
+        duration: 800,
+        delay: 1200,
+        ease: 'Power2',
+        onComplete: () => {
+            this.time.delayedCall(2000, () => {
+                this.tweens.add({
+                    targets: subtitle,
+                    alpha: 0,
+                    y: centerY,
+                    duration: 800,
+                    ease: 'Power2',
+                    onComplete: () => {
+                        this.showInstructionPopup();
+                    }
+                });
+            });
+        }
+    });
+}
+
+showInstructionPopup() {
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+    
+    // Create popup container
+    const popupContainer = this.add.container(centerX, centerY);
+    
+    // Tutorial popup background
+    const popupBg = this.add.rectangle(0, 0, 600, 350, 0x000000, 0.9);
+    popupBg.setStrokeStyle(2, 0x33cc99);
+    
+    // Popup header
+    const popupHeader = this.add.text(0, -140, 'HASH CRACKING CHALLENGE', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        fontStyle: 'bold',
+        color: '#33cc99',
+        align: 'center'
+    });
+    popupHeader.setOrigin(0.5);
+    
+    // Popup content
+    const content = [
+        "Passwords should never be stored in plaintext. Instead, they are",
+        "typically 'hashed' using a one-way function that converts the",
+        "password into a unique string of characters.",
+        "",
+        "However, weak hashing without proper salting can be vulnerable",
+        "to various attacks, including rainbow tables and dictionary attacks.",
+        "",
+        "Your goal: Identify which common password matches the hash in the",
+        "database to gain unauthorized access to the system."
+    ].join('\n');
+    
+    const popupContent = this.add.text(0, 0, content, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '16px',
+        color: '#ffffff',
+        align: 'center',
+        lineSpacing: 5
+    });
+    popupContent.setOrigin(0.5);
+    
+    // Continue button
+    const buttonBg = this.add.rectangle(0, 130, 150, 40, 0x33cc99);
+    buttonBg.setInteractive({ useHandCursor: true });
+    
+    const buttonText = this.add.text(0, 130, 'START', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '16px',
+        color: '#ffffff',
+        align: 'center'
+    });
+    buttonText.setOrigin(0.5);
+    
+    // Add components to the popup container
+    popupContainer.add(popupBg);
+    popupContainer.add(popupHeader);
+    popupContainer.add(popupContent);
+    popupContainer.add(buttonBg);
+    popupContainer.add(buttonText);
+    
+    // Animation for popup appearance
+    popupContainer.setAlpha(0);
+    popupContainer.setScale(0.8);
+    
+    this.tweens.add({
+        targets: popupContainer,
+        alpha: 1,
+        scale: 1,
+        duration: 300,
+        ease: 'Power2'
+    });
+    
+    // Continue button action
+    buttonBg.on('pointerdown', () => {
         this.tweens.add({
-            targets: gameContainer,
-            alpha: 1,
-            duration: 500,
-            ease: 'Power2'
+            targets: popupContainer,
+            alpha: 0,
+            scale: 0.8,
+            duration: 300,
+            ease: 'Power2',
+            onComplete: () => {
+                popupContainer.destroy();
+                this.showHashCrackingSystem();
+            }
         });
-    }
+    });
     
-    createPasswordButtons(gameContainer) {
-        const leftStartY = -60;
-        const rightStartY = -60;
-        const spacing = 50;
-        const leftX = -300;
-        const rightX = 300;
-        
-        // Status message at the bottom
-        const statusText = this.add.text(0, 170, 'Select two passwords that have matching hashes', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
+    // Hover effects for button
+    buttonBg.on('pointerover', () => {
+        buttonBg.fillColor = 0x66eebb;
+    });
+    
+    buttonBg.on('pointerout', () => {
+        buttonBg.fillColor = 0x33cc99;
+    });
+}
+
+showHashCrackingSystem() {
+    // SIMPLIFIED APPROACH but maintaining the container pattern from Level 1
+    // Clear everything and start fresh
+    this.children.removeAll(true);
+    
+    // Simple black background
+    this.add.rectangle(
+        this.cameras.main.width / 2,
+        this.cameras.main.height / 2,
+        this.cameras.main.width,
+        this.cameras.main.height,
+        0x000000
+    );
+    
+    // Create a global container for the game interface
+    const mainContainer = this.add.container(this.cameras.main.width / 2, this.cameras.main.height / 2);
+    
+    // Green border around the screen
+    const border = this.add.graphics();
+    border.lineStyle(3, 0x33ff99, 1);
+    border.strokeRect(-this.cameras.main.width/2 + 10, -this.cameras.main.height/2 + 10, 
+                      this.cameras.main.width - 20, this.cameras.main.height - 20);
+    mainContainer.add(border);
+    
+    // Title at the top
+    const headerText = this.add.text(
+        0, 
+        -this.cameras.main.height/2 + 40, 
+        'PASSWORD DATABASE ANALYSIS',
+        {
+            fontFamily: 'Arial Black, Impact, sans-serif',
+            fontSize: '32px',
+            fontStyle: 'bold',
+            color: '#33ff99',
             align: 'center'
-        });
-        statusText.setOrigin(0.5);
-        gameContainer.add(statusText);
-        
-        // Create plaintext password buttons
-        for (let i = 0; i < this.plaintextPasswords.length; i++) {
-            const y = leftStartY + (i * spacing);
-            const plainButton = this.add.rectangle(leftX, y, 350, 40, 0x003322);
-            plainButton.setStrokeStyle(1, 0x33cc99);
-            plainButton.setInteractive({ useHandCursor: true });
-            
-            const plainText = this.add.text(leftX, y, this.plaintextPasswords[i], {
+        }
+    );
+    headerText.setOrigin(0.5);
+    mainContainer.add(headerText);
+    
+    // ==== LEFT SIDE - DATABASE ====
+    const leftX = -this.cameras.main.width * 0.25;
+    const startY = -this.cameras.main.height * 0.25;
+    
+    // Database header
+    const dbHeader = this.add.text(
+        leftX, 
+        startY - 30, 
+        'USER DATABASE',
+        {
+            fontFamily: 'Arial Black, sans-serif',
+            fontSize: '24px',
+            fontStyle: 'bold',
+            color: '#33ff99',
+            align: 'center'
+        }
+    );
+    dbHeader.setOrigin(0.5);
+    mainContainer.add(dbHeader);
+    
+    // Background for user database table
+    const dbTableBg = this.add.rectangle(
+        leftX,
+        startY + 100,
+        550, // Much wider to fit hash values
+        200,
+        0x002211,
+        1
+    );
+    dbTableBg.setStrokeStyle(2, 0x33ff99);
+    mainContainer.add(dbTableBg);
+    
+    // Database column headers
+    const usernameHeader = this.add.text(
+        leftX - 200, 
+        startY + 40, 
+        'USERNAME',
+        {
+            fontFamily: 'Courier New, monospace',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'left'
+        }
+    );
+    mainContainer.add(usernameHeader);
+    
+    const hashHeader = this.add.text(
+        leftX - 40, 
+        startY + 40, 
+        'PASSWORD HASH (MD5)',
+        {
+            fontFamily: 'Courier New, monospace',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'left'
+        }
+    );
+    mainContainer.add(hashHeader);
+    
+    // Separator line
+    const separator = this.add.graphics();
+    separator.lineStyle(2, 0x33ff99, 1);
+    separator.lineBetween(leftX - 240, startY + 60, leftX + 240, startY + 60);
+    mainContainer.add(separator);
+    
+    // Database entries
+    let entryY = startY + 90;
+    for (const entry of this.passwordDatabase) {
+        // Username
+        const usernameText = this.add.text(
+            leftX - 200, 
+            entryY, 
+            entry.username,
+            {
                 fontFamily: 'Courier New, monospace',
                 fontSize: '16px',
                 color: '#ffffff',
-                align: 'center'
-            });
-            plainText.setOrigin(0.5);
-            
-            // Store reference to the button and index in the plaintext variable
-            plainButton.passwordIndex = i;
-            plainButton.isPlaintext = true;
-            
-            gameContainer.add(plainButton);
-            gameContainer.add(plainText);
-            
-            // Handle selection
-            plainButton.on('pointerdown', () => {
-                this.handlePasswordSelection(plainButton, gameContainer, statusText);
-            });
-            
-            // Hover effects
-            plainButton.on('pointerover', () => {
-                plainButton.fillColor = 0x006633;
-            });
-            
-            plainButton.on('pointerout', () => {
-                if (!plainButton.isSelected) {
-                    plainButton.fillColor = 0x003322;
-                }
-            });
-        }
+                align: 'left'
+            }
+        );
+        mainContainer.add(usernameText);
         
-        // Create hashed password displays
-        for (let i = 0; i < this.hashedPasswords.length; i++) {
-            const y = rightStartY + (i * spacing);
-            const hashBg = this.add.rectangle(rightX, y, 350, 40, 0x002211);
-            hashBg.setStrokeStyle(1, 0x336655);
-            
-            const hashText = this.add.text(rightX, y, this.hashedPasswords[i], {
+        // Password hash
+        const hashText = this.add.text(
+            leftX - 40, 
+            entryY, 
+            entry.passwordHash,
+            {
                 fontFamily: 'Courier New, monospace',
-                fontSize: '14px',
-                color: '#33cc99',
-                align: 'center'
-            });
-            hashText.setOrigin(0.5);
-            
-            gameContainer.add(hashBg);
-            gameContainer.add(hashText);
-        }
+                fontSize: '16px',
+                color: entry === this.targetAccount ? '#00ff66' : '#ffffff',
+                align: 'left'
+            }
+        );
+        mainContainer.add(hashText);
+        
+        entryY += 30;
     }
     
-    handlePasswordSelection(button, gameContainer, statusText) {
-        // Check if collision is already found
-        if (this.collisionFound) {
-            return;
+    // Target instruction - positioned below the table
+    const targetText = this.add.text(
+        leftX, 
+        startY + 200, 
+        'Target: Crack the admin password hash',
+        {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '18px',
+            fontStyle: 'italic',
+            color: '#ffff00',
+            align: 'center'
         }
-        
-        // If this button is already selected, deselect it
-        if (button.isSelected) {
-            button.isSelected = false;
-            button.fillColor = 0x003322;
-            this.selectedPasswords = this.selectedPasswords.filter(index => index !== button.passwordIndex);
-            statusText.setText('Select two passwords that have matching hashes');
-            return;
+    );
+    targetText.setOrigin(0.5);
+    mainContainer.add(targetText);
+    
+    // ==== RIGHT SIDE - COMMON PASSWORDS ====
+    const rightX = this.cameras.main.width * 0.25;
+    
+    // Common passwords header
+    const pwHeader = this.add.text(
+        rightX, 
+        startY - 30, 
+        'COMMON PASSWORDS',
+        {
+            fontFamily: 'Arial Black, sans-serif',
+            fontSize: '24px',
+            fontStyle: 'bold',
+            color: '#33ff99',
+            align: 'center'
         }
+    );
+    pwHeader.setOrigin(0.5);
+    mainContainer.add(pwHeader);
+    
+    // Background for common passwords table
+    const pwTableBg = this.add.rectangle(
+        rightX,
+        startY + 150,
+        550, // Much wider to fit hash values
+        250,
+        0x002211,
+        1
+    );
+    pwTableBg.setStrokeStyle(2, 0x33ff99);
+    mainContainer.add(pwTableBg);
+    
+    // Common passwords column headers
+    const passwordHeader = this.add.text(
+        rightX - 200, 
+        startY + 40, 
+        'PASSWORD',
+        {
+            fontFamily: 'Courier New, monospace',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'left'
+        }
+    );
+    mainContainer.add(passwordHeader);
+    
+    const commonHashHeader = this.add.text(
+        rightX - 40, 
+        startY + 40, 
+        'MD5 HASH',
+        {
+            fontFamily: 'Courier New, monospace',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'left'
+        }
+    );
+    mainContainer.add(commonHashHeader);
+    
+    // Separator line
+    const pwSeparator = this.add.graphics();
+    pwSeparator.lineStyle(2, 0x33ff99, 1);
+    pwSeparator.lineBetween(rightX - 240, startY + 60, rightX + 240, startY + 60);
+    mainContainer.add(pwSeparator);
+    
+    // Create a container for result messages
+    const resultContainer = this.add.container(rightX, startY + 230);
+    mainContainer.add(resultContainer);
+    
+    // Password dictionary entries and buttons
+    const passwordButtons = [];
+    let pwEntryY = startY + 90;
+    for (const entry of this.commonPasswords) {
+        // Background for the row (slightly visible)
+        const rowBg = this.add.rectangle(
+            rightX, 
+            pwEntryY, 
+            500, // Wider row
+            24, 
+            0x33cc99, 
+            0.1
+        );
+        mainContainer.add(rowBg);
         
-        // Can only select up to 2 passwords
-        if (this.selectedPasswords.length >= 2) {
-            // Deselect the first selected password
-            const firstSelectedIndex = this.selectedPasswords.shift();
+        // Password text
+        const passwordText = this.add.text(
+            rightX - 200, 
+            pwEntryY, 
+            entry.password,
+            {
+                fontFamily: 'Courier New, monospace',
+                fontSize: '16px',
+                color: '#ffffff',
+                align: 'left'
+            }
+        );
+        mainContainer.add(passwordText);
+        
+        // Hash text
+        const hashText = this.add.text(
+            rightX - 40, 
+            pwEntryY, 
+            entry.hash,
+            {
+                fontFamily: 'Courier New, monospace',
+                fontSize: '16px',
+                color: '#ffffff',
+                align: 'left'
+            }
+        );
+        mainContainer.add(hashText);
+        
+        // Make the row interactive
+        rowBg.setInteractive({ useHandCursor: true });
+        passwordButtons.push(rowBg);
+        
+        // Hover effect
+        rowBg.on('pointerover', () => {
+            rowBg.fillAlpha = 0.5;
+            passwordText.setColor('#00ff66');
+            hashText.setColor('#00ff66');
+        });
+        
+        rowBg.on('pointerout', () => {
+            rowBg.fillAlpha = 0.1;
+            passwordText.setColor('#ffffff');
+            hashText.setColor('#ffffff');
+        });
+        
+        // Click event - MORE LIKE LEVEL 1
+        rowBg.on('pointerdown', () => {
+            this.selectedPasswordHash = entry.hash;
             
-            // Find the button with this index and deselect it
-            gameContainer.list.forEach(item => {
-                if (item.type === 'Rectangle' && 
-                    item.isPlaintext && 
-                    item.passwordIndex === firstSelectedIndex) {
-                    
-                    item.isSelected = false;
-                    item.fillColor = 0x003322;
+            // Reset all selections
+            passwordButtons.forEach(btn => {
+                btn.fillAlpha = 0.1;
+            });
+            
+            // Clear all text colors
+            mainContainer.list.forEach(item => {
+                if (item.type === 'Text' && item.y >= startY + 90 && item.y <= startY + 90 + (this.commonPasswords.length * 30)) {
+                    item.setColor('#ffffff');
                 }
             });
-        }
-        
-        // Select this button
-        button.isSelected = true;
-        button.fillColor = 0x00aa66;
-        this.selectedPasswords.push(button.passwordIndex);
-        
-        // Check if we have 2 selected passwords now
-        if (this.selectedPasswords.length === 2) {
-            this.checkForCollision(gameContainer, statusText);
-        }
-    }
-    
-    checkForCollision(gameContainer, statusText) {
-        const index1 = this.selectedPasswords[0];
-        const index2 = this.selectedPasswords[1];
-        
-        // Check if the hashes match
-        if (this.hashedPasswords[index1] === this.hashedPasswords[index2] && index1 !== index2) {
-            // Found a collision
-            this.collisionFound = true;
             
-            // Update status text to show success
-            statusText.setText('You found a hash collision!');
-            statusText.setColor('#00ff66');
+            // Highlight this selection
+            rowBg.fillAlpha = 0.6;
+            passwordText.setColor('#00ff66');
+            hashText.setColor('#00ff66');
             
-            // Highlight the matching hashes
-            this.highlightMatchingHashes(gameContainer, index1, index2);
+            // Clear any existing result messages
+            resultContainer.removeAll();
             
-            // Show success message after a short delay
-            this.time.delayedCall(1500, () => {
-                this.showCollisionSuccessMessage(gameContainer);
-            });
-            
-        } else {
-            // No collision
-            statusText.setText('Try again! Not all hashes are unique.');
-            statusText.setColor('#ff6666');
-        }
-    }
-    
-    highlightMatchingHashes(gameContainer, index1, index2) {
-        // Find the hash displays for the selected passwords and highlight them
-        const rightX = 300;
-        const rightStartY = -60;
-        const spacing = 50;
-        
-        // Highlight the hash backgrounds
-        const y1 = rightStartY + (index1 * spacing);
-        const y2 = rightStartY + (index2 * spacing);
-        
-        // Find and highlight both hash rectangles
-        gameContainer.list.forEach(item => {
-            if (item.type === 'Rectangle' && 
-                !item.isPlaintext && 
-                (Math.abs(item.y - y1) < 1 || Math.abs(item.y - y2) < 1) &&
-                Math.abs(item.x - rightX) < 1) {
+            // Check if match found
+            if (entry.hash === this.targetAccount.passwordHash) {
+                // Create success message
+                const successText = this.add.text(
+                    0,
+                    0,
+                    'MATCH FOUND! This is the admin password.',
+                    {
+                        fontFamily: 'Arial Black, sans-serif',
+                        fontSize: '18px',
+                        fontStyle: 'bold',
+                        color: '#00ff66',
+                        align: 'center'
+                    }
+                );
+                successText.setOrigin(0.5);
+                resultContainer.add(successText);
                 
-                // Change to success color
-                item.fillColor = 0x00aa66;
-                item.setStrokeStyle(2, 0x00ff99);
+                // Enable access button
+                accessButton.fillColor = 0x00ff66;
+                accessButton.fillAlpha = 1;
+                accessButton.setInteractive({ useHandCursor: true });
+            } else {
+                // Create failure message
+                const failText = this.add.text(
+                    0,
+                    0,
+                    'No match with admin hash. Try another password.',
+                    {
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '18px',
+                        fontStyle: 'bold',
+                        color: '#ff6666',
+                        align: 'center'
+                    }
+                );
+                failText.setOrigin(0.5);
+                resultContainer.add(failText);
                 
-                // Add a pulsing animation
-                this.tweens.add({
-                    targets: item,
-                    alpha: 0.7,
-                    duration: 500,
-                    yoyo: true,
-                    repeat: -1
-                });
+                // Disable access button
+                accessButton.fillColor = 0x33cc99;
+                accessButton.fillAlpha = 0.5;
+                accessButton.disableInteractive();
             }
         });
+        
+        pwEntryY += 30;
     }
     
-    showCollisionSuccessMessage(gameContainer) {
-        const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 2;
-        
-        // Create success message container
-        const messageContainer = this.add.container(centerX, centerY);
-        
-        // Message background
-        const messageBg = this.add.rectangle(0, 0, 600, 300, 0x000000, 0.95);
-        messageBg.setStrokeStyle(2, 0x33cc99);
-        
-        // Message title
-        const messageTitle = this.add.text(0, -120, 'HASH COLLISION FOUND!', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '28px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        messageTitle.setOrigin(0.5);
-        
-        // Message content
-        const content = [
-            "You found a hash collision! This means two different",
-            "passwords created the same hash.",
-            "",
-            "MD5 and SHA-1 are weak because attackers can generate",
-            "collisions easily.",
-            "",
-            "Modern hashing like SHA-256 or bcrypt adds security",
-            "and prevents collisions."
-        ].join('\n');
-        
-        const messageContent = this.add.text(0, 0, content, {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
-            align: 'center',
-            lineSpacing: 5
-        });
-        messageContent.setOrigin(0.5);
-        
-        // Continue button
-        const continueButton = this.add.rectangle(0, 110, 200, 40, 0x33cc99);
-        continueButton.setInteractive({ useHandCursor: true });
-        
-        const continueText = this.add.text(0, 110, 'CONTINUE', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
-            align: 'center'
-        });
-        continueText.setOrigin(0.5);
-        
-        // Add components to the message container
-        messageContainer.add(messageBg);
-        messageContainer.add(messageTitle);
-        messageContainer.add(messageContent);
-        messageContainer.add(continueButton);
-        messageContainer.add(continueText);
-        
-        // Fade out the game container
-        this.tweens.add({
-            targets: gameContainer,
-            alpha: 0.3,
-            duration: 300
-        });
-        
-        // Animation for message appearance
-        messageContainer.setAlpha(0);
-        messageContainer.setScale(0.8);
-        
-        this.tweens.add({
-            targets: messageContainer,
-            alpha: 1,
-            scale: 1,
-            duration: 300,
-            ease: 'Power2'
-        });
-        
-        // Continue button action
-        continueButton.on('pointerdown', () => {
-            this.tweens.add({
-                targets: [messageContainer, gameContainer],
-                alpha: 0,
-                scale: 0.8,
-                duration: 300,
-                ease: 'Power2',
-                onComplete: () => {
-                    messageContainer.destroy();
-                    gameContainer.destroy();
-                    this.showSuccessScreen();
-                }
-            });
-        });
-        
-        // Hover effects for button
-        continueButton.on('pointerover', () => {
-            continueButton.fillColor = 0x66eebb;
-        });
-        
-        continueButton.on('pointerout', () => {
-            continueButton.fillColor = 0x33cc99;
-        });
-    }
+    // Access button - positioned well below the password table
+    const accessButton = this.add.rectangle(
+        rightX,
+        startY + 310,
+        200,
+        50,
+        0x33cc99,
+        1
+    );
+    mainContainer.add(accessButton);
     
-    showSuccessScreen() {
-        const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 2;
-        
-        // Create success container
-        const successContainer = this.add.container(centerX, centerY);
-        
-        // Success background
-        const successBg = this.add.rectangle(0, 0, 600, 400, 0x001100, 0.95);
-        successBg.setStrokeStyle(3, 0x33cc99);
-        
-        // Success header
-        const successHeader = this.add.text(0, -150, 'CHALLENGE COMPLETE!', {
-            fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '36px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        successHeader.setOrigin(0.5);
-        
-        // Success message
-        const successTitle = this.add.text(0, -90, 'You found a weakness in the hashing algorithm!', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
-            color: '#ffffff',
-            align: 'center'
-        });
-        successTitle.setOrigin(0.5);
-        
-        // Explanation
-        const explanationTitle = this.add.text(0, -40, 'What you learned:', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '20px',
-            fontStyle: 'bold',
-            color: '#33cc99',
-            align: 'center'
-        });
-        explanationTitle.setOrigin(0.5);
-        
-        const explanation = [
-            "• Weak hashes allow attackers to find password collisions.",
-            "",
-            "• If two different users have the same hashed password,",
-            "  an attacker can use one to log in as another!",
-            "",
-            "• Always use strong hashing algorithms like bcrypt,",
-            "  PBKDF2, or Argon2 to secure passwords."
-        ].join('\n');
-        
-        const explanationText = this.add.text(0, 50, explanation, {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            color: '#ffffff',
-            align: 'center',
-            lineSpacing: 5
-        });
-        explanationText.setOrigin(0.5);
-        
-        // Next level button
-        const nextButton = this.add.rectangle(0, 150, 200, 40, 0x33cc99);
-        nextButton.setInteractive({ useHandCursor: true });
-        
-        const nextText = this.add.text(0, 150, 'NEXT LEVEL', {
-            fontFamily: 'Arial, sans-serif',
+    const accessText = this.add.text(
+        rightX,
+        startY + 310,
+        'ACCESS SYSTEM',
+        {
+            fontFamily: 'Arial Black, sans-serif',
             fontSize: '18px',
             color: '#ffffff',
             align: 'center'
-        });
-        nextText.setOrigin(0.5);
-        
-        // Add components to container
-        successContainer.add(successBg);
-        successContainer.add(successHeader);
-        successContainer.add(successTitle);
-        successContainer.add(explanationTitle);
-        successContainer.add(explanationText);
-        successContainer.add(nextButton);
-        successContainer.add(nextText);
-        
-        // Animation for success screen appearance
-        successContainer.setAlpha(0);
-        
-        this.tweens.add({
-            targets: successContainer,
-            alpha: 1,
-            duration: 800,
-            ease: 'Power2'
-        });
-        
-        // Next level button action
-        nextButton.on('pointerdown', () => {
-            this.cameras.main.fade(800, 0, 0, 0);
-            this.time.delayedCall(800, () => {
-                this.scene.start('ChallengeA2Level3'); // Transition to Level 3
-            });
-        });
-        
-        // Hover effects
-        nextButton.on('pointerover', () => {
-            nextButton.fillColor = 0x66eebb;
-        });
-        
-        nextButton.on('pointerout', () => {
-            nextButton.fillColor = 0x33cc99;
-        });
-        
-        // Victory particles with green tint
-        const particles = this.add.particles('button');
-        
-        particles.createEmitter({
-            x: { min: 0, max: this.cameras.main.width },
-            y: -50,
-            speed: { min: 100, max: 200 },
-            angle: { min: 80, max: 100 },
-            scale: { start: 0.2, end: 0 },
-            lifespan: 4000,
-            quantity: 2,
-            frequency: 40,
-            tint: 0x33cc99,
-            blendMode: 'ADD'
-        });
-    }
+        }
+    );
+    accessText.setOrigin(0.5);
+    mainContainer.add(accessText);
+    
+    // Access button action - SIMILAR TO LEVEL 1
+    accessButton.on('pointerdown', () => {
+        // Directly call showSuccessScreen without fading
+        this.showSuccessScreen();
+    });
+}
 
-    update() {
-        // Game logic that runs on every frame
-    }
+showSuccessScreen() {
+    // FOLLOWING LEVEL 1'S APPROACH MORE CLOSELY WITH EXPANDED LAYOUT
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+    
+    // Create a success container like in Level 1
+    const successContainer = this.add.container(centerX, centerY);
+    
+    // Success background - LARGER to fit all content comfortably
+    const successBg = this.add.rectangle(0, 0, 700, 500, 0x001100, 0.95);
+    successBg.setStrokeStyle(3, 0x33cc99);
+    successContainer.add(successBg);
+    
+    // Success header - positioned higher in the larger box
+    const successHeader = this.add.text(0, -200, 'CHALLENGE COMPLETE!', {
+        fontFamily: 'Arial Black, Impact, sans-serif',
+        fontSize: '36px',
+        fontStyle: 'bold',
+        color: '#33cc99',
+        align: 'center'
+    });
+    successHeader.setOrigin(0.5);
+    successContainer.add(successHeader);
+    
+    // Success message - more space below the header
+    const successTitle = this.add.text(0, -140, 'You successfully cracked the password hash!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        color: '#ffffff',
+        align: 'center'
+    });
+    successTitle.setOrigin(0.5);
+    successContainer.add(successTitle);
+    
+    // Lessons learned - more space below success message
+    const lessonsTitle = this.add.text(0, -80, 'What you learned:', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '22px',
+        fontStyle: 'bold',
+        color: '#33cc99',
+        align: 'center'
+    });
+    lessonsTitle.setOrigin(0.5);
+    successContainer.add(lessonsTitle);
+    
+    // Lessons content with more line spacing
+    const lessonsContent = [
+        "1. Weak hashing allows attackers to discover passwords using",
+        "   lookup tables and rainbow tables.",
+        "",
+        "2. MD5 is considered cryptographically broken and should not",
+        "   be used for password storage.",
+        "",
+        "3. Modern password storage should use strong algorithms like",
+        "   bcrypt, Argon2, or PBKDF2 with unique salts per password."
+    ].join('\n');
+    
+    const lessons = this.add.text(0, 40, lessonsContent, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px', // Larger font
+        color: '#ffffff',
+        align: 'center',
+        lineSpacing: 10 // More line spacing
+    });
+    lessons.setOrigin(0.5);
+    successContainer.add(lessons);
+    
+    // Next Level button - positioned lower and to the right
+    const nextButton = this.add.rectangle(150, 180, 200, 50, 0x33cc99);
+    nextButton.setInteractive({ useHandCursor: true });
+    successContainer.add(nextButton);
+    
+    const nextText = this.add.text(150, 180, 'NEXT LEVEL', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '20px', // Larger font
+        color: '#ffffff',
+        align: 'center'
+    });
+    nextText.setOrigin(0.5);
+    successContainer.add(nextText);
+    
+    // Back to level select button - positioned lower and to the left
+    const backButton = this.add.rectangle(-150, 180, 200, 50, 0x116644);
+    backButton.setInteractive({ useHandCursor: true });
+    successContainer.add(backButton);
+    
+    const backText = this.add.text(-150, 180, 'LEVEL SELECT', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '20px', // Larger font
+        color: '#ffffff',
+        align: 'center'
+    });
+    backText.setOrigin(0.5);
+    successContainer.add(backText);
+    
+    // Animation for success screen appearance
+    successContainer.setAlpha(0);
+    
+    this.tweens.add({
+        targets: successContainer,
+        alpha: 1,
+        duration: 800,
+        ease: 'Power2'
+    });
+    
+    // Next Level button action
+    nextButton.on('pointerdown', () => {
+        this.cameras.main.fade(800, 0, 0, 0);
+        this.time.delayedCall(800, () => {
+            this.scene.start('ChallengeA2Level3');
+        });
+    });
+    
+    // Back button action
+    backButton.on('pointerdown', () => {
+        this.cameras.main.fade(800, 0, 0, 0);
+        this.time.delayedCall(800, () => {
+            this.scene.start('A2LevelSelect');
+        });
+    });
+    
+    // Hover effects
+    nextButton.on('pointerover', () => {
+        nextButton.fillColor = 0x66eebb;
+    });
+    
+    nextButton.on('pointerout', () => {
+        nextButton.fillColor = 0x33cc99;
+    });
+    
+    backButton.on('pointerover', () => {
+        backButton.fillColor = 0x33aa77;
+    });
+    
+    backButton.on('pointerout', () => {
+        backButton.fillColor = 0x116644;
+    });
+    
+    // Victory particles
+    const particles = this.add.particles('button');
+    
+    particles.createEmitter({
+        x: { min: 0, max: this.cameras.main.width },
+        y: -50,
+        speed: { min: 100, max: 200 },
+        angle: { min: 80, max: 100 },
+        scale: { start: 0.2, end: 0 },
+        lifespan: 4000,
+        quantity: 2,
+        frequency: 40,
+        tint: 0x33cc99,
+        blendMode: 'ADD'
+    });
+}
+
+update() {
+    // Game logic that runs on every frame
+}
 }

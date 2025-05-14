@@ -7,6 +7,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
             '87TYUI9MNBL': 'Alice',
             '98GHYU67JNM': 'Bob'
         };
+        this.scalingManager = null;
     }
 
     preload() {
@@ -15,32 +16,68 @@ class ChallengeA1Gameplay extends Phaser.Scene {
     }
 
     create() {
+        // Initialize the scaling manager
+        this.scalingManager = new ScalingManager(this);
+        
         // Set up the challenge gameplay screen
         console.log("Available scenes:", this.scene.manager.scenes.map(scene => scene.scene.key));
         this.createBackground();
         this.createStartMessage();
+        
+        // Listen for resize events
+        this.scale.on('resize', this.handleResize, this);
+    }
+    
+    handleResize() {
+        // Update scaling manager
+        if (this.scalingManager) {
+            this.scalingManager.updateScaleFactor();
+            this.refreshUI();
+        }
+    }
+    
+    refreshUI() {
+        // Clear the existing display
+        this.children.removeAll(true);
+        
+        // Recreate the UI elements
+        this.createBackground();
+        
+        // Recreate UI based on current state
+        if (this.currentStep === 0) {
+            this.createStartMessage();
+        } else if (this.currentStep === 1) {
+            this.showInstructionPopup();
+        } else if (this.currentStep === 2) {
+            this.showLoginAttempt();
+        } else if (this.currentStep === 3) {
+            this.showServerLogs();
+        }
     }
     
     createBackground() {
-        // Create a dark background
-        const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x000022);
+        // Create a dark background that fills the entire screen
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        const bg = this.add.rectangle(0, 0, width, height, 0x000022);
         bg.setOrigin(0, 0);
         
-        // Create a subtle grid pattern (darker than challenge select screen)
-        const gridSize = 40;
+        // Create a subtle grid pattern with responsive sizing
+        const gridSize = this.scalingManager.scale(40);
         const graphics = this.add.graphics();
         graphics.lineStyle(1, 0x001133, 0.2);
         
-        // Draw vertical lines
-        for(let x = 0; x < this.cameras.main.width; x += gridSize) {
+        // Draw vertical lines to fill screen
+        for(let x = 0; x < width; x += gridSize) {
             graphics.moveTo(x, 0);
-            graphics.lineTo(x, this.cameras.main.height);
+            graphics.lineTo(x, height);
         }
         
-        // Draw horizontal lines
-        for(let y = 0; y < this.cameras.main.height; y += gridSize) {
+        // Draw horizontal lines to fill screen
+        for(let y = 0; y < height; y += gridSize) {
             graphics.moveTo(0, y);
-            graphics.lineTo(this.cameras.main.width, y);
+            graphics.lineTo(width, y);
         }
         
         graphics.strokePath();
@@ -53,7 +90,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Create the message with animation
         const message = this.add.text(centerX, centerY, 'CHALLENGE A1 HAS STARTED', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '32px',
+            fontSize: `${this.scalingManager.scale(32)}px`,
             fontStyle: 'bold',
             color: '#00ff00', // Hacker green
             align: 'center'
@@ -70,9 +107,9 @@ class ChallengeA1Gameplay extends Phaser.Scene {
             ease: 'Power2',
             onComplete: () => {
                 // Add blinking cursor effect
-                const cursor = this.add.text(message.x + message.width / 2 + 10, message.y, '_', {
+                const cursor = this.add.text(message.x + message.width / 2 + this.scalingManager.scale(10), message.y, '_', {
                     fontFamily: 'Courier New, monospace',
-                    fontSize: '32px',
+                    fontSize: `${this.scalingManager.scale(32)}px`,
                     color: '#00ff00'
                 });
                 cursor.setOrigin(0.5);
@@ -91,7 +128,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                             this.tweens.add({
                                 targets: message,
                                 alpha: 0,
-                                y: centerY - 50,
+                                y: centerY - this.scalingManager.scale(50),
                                 duration: 800,
                                 ease: 'Power2'
                             });
@@ -102,9 +139,9 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         });
         
         // Add a subtitle that appears after the main message
-        const subtitle = this.add.text(centerX, centerY + 50, 'Session Hijacker', {
+        const subtitle = this.add.text(centerX, centerY + this.scalingManager.scale(50), 'Session Hijacker', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '20px',
+            fontSize: `${this.scalingManager.scale(20)}px`,
             color: '#3399ff',
             align: 'center'
         });
@@ -127,6 +164,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                         duration: 800,
                         ease: 'Power2',
                         onComplete: () => {
+                            this.currentStep = 1;
                             this.showInstructionPopup();
                         }
                     });
@@ -142,14 +180,17 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Create popup container
         const popupContainer = this.add.container(centerX, centerY);
         
-        // Tutorial popup background
-        const popupBg = this.add.rectangle(0, 0, 500, 300, 0x000000, 0.9);
-        popupBg.setStrokeStyle(2, 0x3399ff);
+        // Tutorial popup background with scaled dimensions
+        const popupWidth = this.scalingManager.scale(500);
+        const popupHeight = this.scalingManager.scale(300);
         
-        // Popup header
-        const popupHeader = this.add.text(0, -120, 'SESSION HIJACKING', {
+        const popupBg = this.add.rectangle(0, 0, popupWidth, popupHeight, 0x000000, 0.9);
+        popupBg.setStrokeStyle(this.scalingManager.scale(2), 0x3399ff);
+        
+        // Popup header with scaled font
+        const popupHeader = this.add.text(0, -this.scalingManager.scale(120), 'SESSION HIJACKING', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             fontStyle: 'bold',
             color: '#3399ff',
             align: 'center'
@@ -168,20 +209,24 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         
         const popupContent = this.add.text(0, 0, content, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center',
-            lineSpacing: 5
+            lineSpacing: this.scalingManager.scale(5)
         });
         popupContent.setOrigin(0.5);
         
-        // Continue button
-        const buttonBg = this.add.rectangle(0, 110, 150, 40, 0x3399ff);
+        // Continue button with scaled dimensions
+        const buttonWidth = this.scalingManager.scale(150);
+        const buttonHeight = this.scalingManager.scale(40);
+        const buttonY = this.scalingManager.scale(110);
+        
+        const buttonBg = this.add.rectangle(0, buttonY, buttonWidth, buttonHeight, 0x3399ff);
         buttonBg.setInteractive({ useHandCursor: true });
         
-        const buttonText = this.add.text(0, 110, 'CONTINUE', {
+        const buttonText = this.add.text(0, buttonY, 'CONTINUE', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -216,6 +261,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                 ease: 'Power2',
                 onComplete: () => {
                     popupContainer.destroy();
+                    this.currentStep = 2;
                     this.showLoginAttempt();
                 }
             });
@@ -238,14 +284,17 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Create login form container
         const loginContainer = this.add.container(centerX, centerY);
         
-        // Login form background
-        const formBg = this.add.rectangle(0, 0, 400, 350, 0x222222, 0.9);
-        formBg.setStrokeStyle(2, 0x555555);
+        // Login form background with scaled dimensions
+        const formWidth = this.scalingManager.scale(400);
+        const formHeight = this.scalingManager.scale(350);
         
-        // Login form header
-        const formHeader = this.add.text(0, -140, 'LOGIN', {
+        const formBg = this.add.rectangle(0, 0, formWidth, formHeight, 0x222222, 0.9);
+        formBg.setStrokeStyle(this.scalingManager.scale(2), 0x555555);
+        
+        // Login form header with scaled font
+        const formHeader = this.add.text(0, -this.scalingManager.scale(140), 'LOGIN', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             fontStyle: 'bold',
             color: '#ffffff',
             align: 'center'
@@ -253,9 +302,9 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         formHeader.setOrigin(0.5);
         
         // Web app logo
-        const logo = this.add.text(0, -100, '[ SECURE APP ]', {
+        const logo = this.add.text(0, -this.scalingManager.scale(100), '[ SECURE APP ]', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             fontStyle: 'bold',
             color: '#3399ff',
             align: 'center'
@@ -263,10 +312,10 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         logo.setOrigin(0.5);
         
         // Username field
-        this.createFormField(loginContainer, -50, 'Username:');
-        const usernameInput = this.add.text(0, -20, 'hacker123', {
+        this.createFormField(loginContainer, -this.scalingManager.scale(50), 'Username:');
+        const usernameInput = this.add.text(0, -this.scalingManager.scale(20), 'hacker123', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -274,23 +323,27 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         loginContainer.add(usernameInput);
         
         // Password field
-        this.createFormField(loginContainer, 20, 'Password:');
-        const passwordInput = this.add.text(0, 50, '********', {
+        this.createFormField(loginContainer, this.scalingManager.scale(20), 'Password:');
+        const passwordInput = this.add.text(0, this.scalingManager.scale(50), '********', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
         passwordInput.setOrigin(0.5);
         loginContainer.add(passwordInput);
         
-        // Login button
-        const loginButton = this.add.rectangle(0, 100, 150, 40, 0x3399ff);
+        // Login button with scaled dimensions
+        const buttonWidth = this.scalingManager.scale(150);
+        const buttonHeight = this.scalingManager.scale(40);
+        const buttonY = this.scalingManager.scale(100);
+        
+        const loginButton = this.add.rectangle(0, buttonY, buttonWidth, buttonHeight, 0x3399ff);
         loginButton.setInteractive({ useHandCursor: true });
         
-        const loginButtonText = this.add.text(0, 100, 'LOGIN', {
+        const loginButtonText = this.add.text(0, buttonY, 'LOGIN', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -316,9 +369,9 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Login button action - show error message
         loginButton.on('pointerdown', () => {
             // Create error message
-            const errorMsg = this.add.text(0, 140, 'Login failed: Incorrect password', {
+            const errorMsg = this.add.text(0, this.scalingManager.scale(140), 'Login failed: Incorrect password', {
                 fontFamily: 'Arial, sans-serif',
-                fontSize: '16px',
+                fontSize: `${this.scalingManager.scale(16)}px`,
                 color: '#ff3333',
                 align: 'center'
             });
@@ -327,9 +380,9 @@ class ChallengeA1Gameplay extends Phaser.Scene {
             
             // Show hint after a short delay
             this.time.delayedCall(1000, () => {
-                const hintMsg = this.add.text(0, 170, 'Hint: Try looking at public logs to find session data!', {
+                const hintMsg = this.add.text(0, this.scalingManager.scale(170), 'Hint: Try looking at public logs to find session data!', {
                     fontFamily: 'Arial, sans-serif',
-                    fontSize: '14px',
+                    fontSize: `${this.scalingManager.scale(14)}px`,
                     fontStyle: 'italic',
                     color: '#ffff00',
                     align: 'center'
@@ -339,12 +392,12 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                 
                 // Show server log button
                 this.time.delayedCall(1500, () => {
-                    const logButton = this.add.rectangle(0, 220, 200, 40, 0x555555);
+                    const logButton = this.add.rectangle(0, this.scalingManager.scale(220), this.scalingManager.scale(200), this.scalingManager.scale(40), 0x555555);
                     logButton.setInteractive({ useHandCursor: true });
                     
-                    const logButtonText = this.add.text(0, 220, 'VIEW SERVER LOGS', {
+                    const logButtonText = this.add.text(0, this.scalingManager.scale(220), 'VIEW SERVER LOGS', {
                         fontFamily: 'Arial, sans-serif',
-                        fontSize: '16px',
+                        fontSize: `${this.scalingManager.scale(16)}px`,
                         color: '#ffffff',
                         align: 'center'
                     });
@@ -362,6 +415,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                             ease: 'Power2',
                             onComplete: () => {
                                 loginContainer.destroy();
+                                this.currentStep = 3;
                                 this.showServerLogs();
                             }
                         });
@@ -390,15 +444,15 @@ class ChallengeA1Gameplay extends Phaser.Scene {
     }
     
     createFormField(container, yPos, label) {
-        const fieldLabel = this.add.text(-150, yPos, label, {
+        const fieldLabel = this.add.text(-this.scalingManager.scale(150), yPos, label, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#aaaaaa',
             align: 'right'
         });
         fieldLabel.setOrigin(0, 0.5);
         
-        const fieldBg = this.add.rectangle(0, yPos + 30, 300, 30, 0x333333);
+        const fieldBg = this.add.rectangle(0, yPos + this.scalingManager.scale(30), this.scalingManager.scale(300), this.scalingManager.scale(30), 0x333333);
         fieldBg.setStrokeStyle(1, 0x555555);
         
         container.add(fieldLabel);
@@ -412,14 +466,17 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Create log container
         const logContainer = this.add.container(centerX, centerY);
         
-        // Log background
-        const logBg = this.add.rectangle(0, 0, 700, 400, 0x000000, 0.9);
-        logBg.setStrokeStyle(2, 0x00ff00);
+        // Log background with scaled dimensions
+        const logWidth = this.scalingManager.scale(700);
+        const logHeight = this.scalingManager.scale(400);
         
-        // Log header
-        const logHeader = this.add.text(0, -180, 'SERVER LOGS', {
+        const logBg = this.add.rectangle(0, 0, logWidth, logHeight, 0x000000, 0.9);
+        logBg.setStrokeStyle(this.scalingManager.scale(2), 0x00ff00);
+        
+        // Log header with scaled font
+        const logHeader = this.add.text(0, -this.scalingManager.scale(180), 'SERVER LOGS', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '24px',
+            fontSize: `${this.scalingManager.scale(24)}px`,
             fontStyle: 'bold',
             color: '#00ff00',
             align: 'center'
@@ -442,29 +499,29 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         
         const logs = this.add.text(0, 0, logContent, {
             fontFamily: 'Courier New, monospace',
-            fontSize: '14px',
+            fontSize: `${this.scalingManager.scale(14)}px`,
             color: '#00ff00',
             align: 'left',
-            lineSpacing: 8
+            lineSpacing: this.scalingManager.scale(8)
         });
         logs.setOrigin(0.5);
         
-        // Create session ID input field
-        const inputLabel = this.add.text(-300, 130, 'Enter Session ID:', {
+        // Create session ID input field with scaled dimensions
+        const inputLabel = this.add.text(-this.scalingManager.scale(300), this.scalingManager.scale(130), 'Enter Session ID:', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'left'
         });
         inputLabel.setOrigin(0, 0.5);
         
-        const inputBg = this.add.rectangle(0, 160, 400, 30, 0x333333);
+        const inputBg = this.add.rectangle(0, this.scalingManager.scale(160), this.scalingManager.scale(400), this.scalingManager.scale(30), 0x333333);
         inputBg.setStrokeStyle(1, 0x00ff00);
         
         let sessionIdInput = '';
-        const inputText = this.add.text(-195, 160, sessionIdInput + '_', {
+        const inputText = this.add.text(-this.scalingManager.scale(195), this.scalingManager.scale(160), sessionIdInput + '_', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'left'
         });
@@ -486,22 +543,22 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Store the timer reference for later cleanup
         this.cursorTimer = cursorTimer;
         
-        // Submit button
-        const submitButton = this.add.rectangle(250, 160, 150, 30, 0x00aa00);
+        // Submit button with scaled dimensions
+        const submitButton = this.add.rectangle(this.scalingManager.scale(250), this.scalingManager.scale(160), this.scalingManager.scale(150), this.scalingManager.scale(30), 0x00aa00);
         submitButton.setInteractive({ useHandCursor: true });
         
-        const submitText = this.add.text(250, 160, 'USE SESSION ID', {
+        const submitText = this.add.text(this.scalingManager.scale(250), this.scalingManager.scale(160), 'USE SESSION ID', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '14px',
+            fontSize: `${this.scalingManager.scale(14)}px`,
             color: '#ffffff',
             align: 'center'
         });
         submitText.setOrigin(0.5);
         
         // Status message
-        const statusMsg = this.add.text(0, 200, '', {
+        const statusMsg = this.add.text(0, this.scalingManager.scale(200), '', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffff00',
             align: 'center'
         });
@@ -572,6 +629,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                         ease: 'Power2',
                         onComplete: () => {
                             logContainer.destroy();
+                            this.currentStep = 4;
                             this.showSuccessScreen(username);
                         }
                     });
@@ -587,13 +645,13 @@ class ChallengeA1Gameplay extends Phaser.Scene {
             }
         });
         
-        // Back button
-        const backButton = this.add.rectangle(0, -220, 100, 30, 0x555555);
+        // Back button with scaled dimensions
+        const backButton = this.add.rectangle(0, -this.scalingManager.scale(220), this.scalingManager.scale(100), this.scalingManager.scale(30), 0x555555);
         backButton.setInteractive({ useHandCursor: true });
         
-        const backText = this.add.text(0, -220, 'BACK', {
+        const backText = this.add.text(0, -this.scalingManager.scale(220), 'BACK', {
             fontFamily: 'Courier New, monospace',
-            fontSize: '14px',
+            fontSize: `${this.scalingManager.scale(14)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -611,6 +669,7 @@ class ChallengeA1Gameplay extends Phaser.Scene {
                 ease: 'Power2',
                 onComplete: () => {
                     logContainer.destroy();
+                    this.currentStep = 2;
                     this.showLoginAttempt();
                 }
             });
@@ -651,14 +710,17 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         // Create success container
         const successContainer = this.add.container(centerX, centerY);
         
-        // Success background
-        const successBg = this.add.rectangle(0, 0, 600, 400, 0x000000, 0.9);
-        successBg.setStrokeStyle(2, 0x00ff00);
+        // Success background with scaled dimensions
+        const successWidth = this.scalingManager.scale(600);
+        const successHeight = this.scalingManager.scale(400);
         
-        // Success header
-        const successHeader = this.add.text(0, -150, 'MISSION ACCOMPLISHED', {
+        const successBg = this.add.rectangle(0, 0, successWidth, successHeight, 0x000000, 0.9);
+        successBg.setStrokeStyle(this.scalingManager.scale(2), 0x00ff00);
+        
+        // Success header with scaled font
+        const successHeader = this.add.text(0, -this.scalingManager.scale(150), 'MISSION ACCOMPLISHED', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '30px',
+            fontSize: `${this.scalingManager.scale(30)}px`,
             fontStyle: 'bold',
             color: '#00ff00',
             align: 'center'
@@ -666,18 +728,18 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         successHeader.setOrigin(0.5);
         
         // User info
-        const userInfo = this.add.text(0, -100, `You are now logged in as: ${username}`, {
+        const userInfo = this.add.text(0, -this.scalingManager.scale(100), `You are now logged in as: ${username}`, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '20px',
+            fontSize: `${this.scalingManager.scale(20)}px`,
             color: '#ffffff',
             align: 'center'
         });
         userInfo.setOrigin(0.5);
         
         // Lesson title
-        const lessonTitle = this.add.text(0, -50, 'WHAT YOU LEARNED:', {
+        const lessonTitle = this.add.text(0, -this.scalingManager.scale(50), 'WHAT YOU LEARNED:', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '18px',
+            fontSize: `${this.scalingManager.scale(18)}px`,
             fontStyle: 'bold',
             color: '#3399ff',
             align: 'center'
@@ -695,22 +757,26 @@ class ChallengeA1Gameplay extends Phaser.Scene {
             "  expiration policies, and token validation."
         ].join('\n');
         
-        const lesson = this.add.text(0, 50, lessonContent, {
+        const lesson = this.add.text(0, this.scalingManager.scale(50), lessonContent, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center',
-            lineSpacing: 5
+            lineSpacing: this.scalingManager.scale(5)
         });
         lesson.setOrigin(0.5);
         
-        // Next level button
-        const nextButton = this.add.rectangle(0, 150, 200, 40, 0x00aa00);
+        // Next level button with scaled dimensions
+        const buttonWidth = this.scalingManager.scale(200);
+        const buttonHeight = this.scalingManager.scale(40);
+        const buttonY = this.scalingManager.scale(150);
+        
+        const nextButton = this.add.rectangle(0, buttonY, buttonWidth, buttonHeight, 0x00aa00);
         nextButton.setInteractive({ useHandCursor: true });
         
-        const nextText = this.add.text(0, 150, 'NEXT LEVEL', {
+        const nextText = this.add.text(0, buttonY, 'NEXT LEVEL', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -765,10 +831,16 @@ class ChallengeA1Gameplay extends Phaser.Scene {
         
         particles.createEmitter({
             x: { min: 0, max: this.cameras.main.width },
-            y: -50,
-            speed: { min: 100, max: 200 },
+            y: -this.scalingManager.scale(50),
+            speed: { 
+                min: this.scalingManager.scale(100), 
+                max: this.scalingManager.scale(200) 
+            },
             angle: { min: 80, max: 100 },
-            scale: { start: 0.1, end: 0 },
+            scale: { 
+                start: this.scalingManager.scale(0.1), 
+                end: 0 
+            },
             lifespan: 4000,
             quantity: 1,
             frequency: 200,
@@ -778,37 +850,40 @@ class ChallengeA1Gameplay extends Phaser.Scene {
     }
     
     createControlButtons() {
-        const buttonY = this.cameras.main.height - 50;
+        const buttonY = this.cameras.main.height - this.scalingManager.scale(50);
         
         // Help button
-        this.createButton(200, buttonY, 'HELP', () => {
+        this.createButton(this.scalingManager.scale(200), buttonY, 'HELP', () => {
             // Show help information
             console.log('Help button clicked');
         });
         
         // Back button
-        this.createButton(400, buttonY, 'BACK', () => {
+        this.createButton(this.scalingManager.scale(400), buttonY, 'BACK', () => {
             // Return to challenge selection
             this.scene.start('ChallengeA1Screen');
         });
         
         // Hint button
-        this.createButton(600, buttonY, 'HINT', () => {
+        this.createButton(this.scalingManager.scale(600), buttonY, 'HINT', () => {
             // Provide a hint
             console.log('Hint button clicked');
         });
     }
     
     createButton(x, y, label, callback) {
-        // Button background
-        const buttonBg = this.add.rectangle(x, y, 120, 40, 0x003366);
-        buttonBg.setStrokeStyle(2, 0x0066ff);
+        // Button background with scaled dimensions
+        const buttonWidth = this.scalingManager.scale(120);
+        const buttonHeight = this.scalingManager.scale(40);
+        
+        const buttonBg = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x003366);
+        buttonBg.setStrokeStyle(this.scalingManager.scale(2), 0x0066ff);
         buttonBg.setInteractive({ useHandCursor: true });
         
-        // Button text
+        // Button text with scaled font
         const buttonText = this.add.text(x, y, label, {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
+            fontSize: `${this.scalingManager.scale(16)}px`,
             color: '#ffffff',
             align: 'center'
         });
@@ -838,11 +913,14 @@ class ChallengeA1Gameplay extends Phaser.Scene {
             duration: 500,
             ease: 'Power2'
         });
+        
+        return { bg: buttonBg, text: buttonText };
     }
 
     update() {
         // Game logic that runs on every frame
     }
+    
     launchLevel2() {
         console.log("Using alternative transition method");
         this.scene.stop('ChallengeA1Gameplay');

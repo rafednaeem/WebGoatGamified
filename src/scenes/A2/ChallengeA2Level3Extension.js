@@ -1,5 +1,5 @@
 /**
- * Extension of the improved ChallengeA2Level3 class
+ * Extension of the existing ChallengeA2Level3 class
  * Adds the back and reset buttons to the scene
  */
 class ChallengeA2Level3Extension extends ChallengeA2Level3 {
@@ -10,9 +10,11 @@ class ChallengeA2Level3Extension extends ChallengeA2Level3 {
     create() {
         // Call the original create method
         super.create();
-        
+        this.time.delayedCall(100, ()=> {
+            GameUIUtils.addLevelControlButtons(this, 'A2LevelSelect', 'ChallengeA2Level3');
+        })
         // Add back and reset buttons
-        GameUIUtils.addLevelControlButtons(this, 'A2LevelSelect', 'ChallengeA2Level3');
+        
     }
     
     // Override the showSuccessScreen method to add back button alongside next level
@@ -23,31 +25,35 @@ class ChallengeA2Level3Extension extends ChallengeA2Level3 {
         // Create success container
         const successContainer = this.add.container(centerX, centerY);
         
-        // Success background
-        const successBg = this.add.rectangle(0, 0, 650, 450, 0x001100, 0.95);
+        // Create a better sized background that fits the screen properly
+        const bgWidth = Math.min(this.cameras.main.width * 0.8, 800);
+        const bgHeight = Math.min(this.cameras.main.height * 0.8, 500);
+        const successBg = this.add.rectangle(0, 0, bgWidth, bgHeight, 0x001100, 0.95);
         successBg.setStrokeStyle(3, 0x33cc99);
         
-        // Success header
-        const successHeader = this.add.text(0, -180, 'CHALLENGE COMPLETE!', {
+        // Success header - positioned higher
+        const headerY = -bgHeight/2 + 60;
+        const successHeader = this.add.text(0, headerY, 'CHALLENGE COMPLETE!', {
             fontFamily: 'Arial Black, Impact, sans-serif',
-            fontSize: '40px',
+            fontSize: '36px', // Slightly smaller for clarity
             fontStyle: 'bold',
             color: '#33cc99',
             align: 'center'
         });
         successHeader.setOrigin(0.5);
         
-        // Success message
-        const successTitle = this.add.text(0, -120, 'You discovered the dangers of hardcoded encryption keys!', {
+        // Success message - positioned with fixed spacing
+        const successTitle = this.add.text(0, headerY + 70, 'You discovered the dangers of hardcoded encryption keys!', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '24px',
+            fontSize: '22px', // Slightly smaller for clarity
             color: '#ffffff',
-            align: 'center'
+            align: 'center',
+            wordWrap: { width: bgWidth * 0.8 }
         });
         successTitle.setOrigin(0.5);
         
-        // Explanation
-        const explanationTitle = this.add.text(0, -60, 'What you learned:', {
+        // Explanation title - moved higher
+        const explanationTitle = this.add.text(0, headerY + 130, 'What you learned:', {
             fontFamily: 'Arial, sans-serif',
             fontSize: '22px',
             fontStyle: 'bold',
@@ -66,20 +72,26 @@ class ChallengeA2Level3Extension extends ChallengeA2Level3 {
             "  or environment variables!"
         ].join('\n');
         
-        const explanationText = this.add.text(0, 50, explanation, {
+        // Explanation text - positioned properly relative to its title
+        const explanationText = this.add.text(0, headerY + 160, explanation, {
             fontFamily: 'Arial, sans-serif',
             fontSize: '18px',
             color: '#ffffff',
-            align: 'center',
+            align: 'left', // Changed to left alignment for better readability
             lineSpacing: 8
         });
-        explanationText.setOrigin(0.5);
+        explanationText.setOrigin(0.5, 0); // Anchor to top-center
         
-        // Next level button
-        const nextButton = this.add.rectangle(150, 170, 250, 50, 0x33cc99);
+        // Button positions - fixed Y position closer to the bottom of the container
+        const buttonY = bgHeight/2 - 60;
+        const buttonSpacing = bgWidth/4;
+        
+        // FIXED: Next level button positioning and size
+        const nextButton = this.add.rectangle(buttonSpacing, buttonY, 220, 50, 0x33cc99);
         nextButton.setInteractive({ useHandCursor: true });
         
-        const nextText = this.add.text(150, 170, 'NEXT LEVEL', {
+        // FIXED: Next level text properly positioned with the button
+        const nextText = this.add.text(buttonSpacing, buttonY, 'NEXT LEVEL', {
             fontFamily: 'Arial, sans-serif',
             fontSize: '22px',
             color: '#ffffff',
@@ -87,11 +99,12 @@ class ChallengeA2Level3Extension extends ChallengeA2Level3 {
         });
         nextText.setOrigin(0.5);
         
-        // Back to level select button
-        const backButton = this.add.rectangle(-150, 170, 250, 50, 0x116644);
+        // FIXED: Back button positioning and size
+        const backButton = this.add.rectangle(-buttonSpacing, buttonY, 220, 50, 0x116644);
         backButton.setInteractive({ useHandCursor: true });
         
-        const backText = this.add.text(-150, 170, 'LEVEL SELECT', {
+        // FIXED: Back text properly positioned with the button
+        const backText = this.add.text(-buttonSpacing, buttonY, 'LEVEL SELECT', {
             fontFamily: 'Arial, sans-serif',
             fontSize: '22px',
             color: '#ffffff',
@@ -120,23 +133,31 @@ class ChallengeA2Level3Extension extends ChallengeA2Level3 {
             ease: 'Power2'
         });
         
-        // Next level button action
+        // FIXED: Next level button action - simplified and more reliable
         nextButton.on('pointerdown', () => {
+            // Disable interactivity to prevent multiple clicks
+            nextButton.disableInteractive();
+            backButton.disableInteractive();
+            
             this.cameras.main.fade(800, 0, 0, 0);
             this.time.delayedCall(800, () => {
                 this.scene.start('ChallengeA2Level4'); // Transition to Level 4
             });
         });
         
-        // Back button action
+        // FIXED: Back button action - simplified and more reliable
         backButton.on('pointerdown', () => {
+            // Disable interactivity to prevent multiple clicks
+            nextButton.disableInteractive();
+            backButton.disableInteractive();
+            
             this.cameras.main.fade(800, 0, 0, 0);
             this.time.delayedCall(800, () => {
                 this.scene.start('A2LevelSelect');
             });
         });
         
-        // Hover effects
+        // Hover effects - kept the same
         nextButton.on('pointerover', () => {
             nextButton.fillColor = 0x66eebb;
             nextButton.scaleX = 1.05;
